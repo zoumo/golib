@@ -17,11 +17,15 @@ limitations under the License.
 package cert
 
 import (
+	"crypto"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/pem"
 	"fmt"
 	"math/big"
 	"net"
@@ -58,6 +62,7 @@ type TLSCert struct {
 	DNSNames    []string `json:"dnsNames,omitempty"`
 	IPAddresses []net.IP `json:"ipAddresses,omitempty"`
 
+	Cert     tls.Certificate   `json:"-"`
 	X509Cert *x509.Certificate `json:"-"`
 }
 
@@ -94,6 +99,7 @@ func LoadX509KeyPair(certFile, keyFile string) (*TLSCert, error) {
 		},
 		DNSNames:    x509Cert.DNSNames,
 		IPAddresses: x509Cert.IPAddresses,
+		Cert:        cert,
 		X509Cert:    x509Cert,
 	}, nil
 }
@@ -113,36 +119,116 @@ func NewPrivateKey() (*rsa.PrivateKey, error) {
 	return rsa.GenerateKey(rand.Reader, privateKeySize)
 }
 
-// NewSelfSignedCACert returns a new self-signed certificate
-func NewSelfSignedCACert(cfg TLSCertConfig, key *rsa.PrivateKey) (*x509.Certificate, error) {
-	now := time.Now()
-	template := x509.Certificate{
-		SerialNumber: new(big.Int).SetInt64(0),
-		Subject: pkix.Name{
-			CommonName:   cfg.CommonName,
-			Organization: cfg.Organization,
-		},
-		NotBefore:   now.UTC(),
-		NotAfter:    now.Add(oneYear * 10).UTC(),
-		KeyUsage:    x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
-		ExtKeyUsage: cfg.Usages,
+// NewECDSAPrivateKey create a new ECDSA provate key by curve
+func NewECDSAPrivateKey(curve string) (*ecdsa.PrivateKey, error) {
+	var priv *ecdsa.PrivateKey
+	var err error
+	switch curve {
+	case "P224":
+		priv, err = ecdsa.GenerateKey(elliptic.P224(), rand.Reader)
+	case "P256":
+		priv, err = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	case "P384":
+		priv, err = ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+	case "P521":
+		priv, err = ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
+	default:
+		return nil, fmt.Errorf("Unrecognized elliptic curve: %q", curve)
 	}
-	certBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, key.Public(), key)
+	if err != nil {
+		return nil, err
+	}
+	return priv, nil
+}
+
+// PEMBlockForKey returns a pemBlock for ras private key
+func PEMBlockForKey(key *rsa.PrivateKey) *pem.Block {
+	return &pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(key),
+	}
+}
+
+// PEMBlockForECDSAKey returns a pemBlock for ecdsa private key
+func PEMBlockForECDSAKey(key *ecdsa.PrivateKey) *pem.Block {
+	bytes, _ := x509.MarshalECPrivateKey(key)
+	return &pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: bytes,
+	}
+}
+
+// PEMBlockForCert returns  a pemBlock for x509 certificate
+func PEMBlockForCert(derBytes []byte) *pem.Block {
+	return &pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: derBytes,
+	}
+}
+
+// NewSelfSignedCert returns a new self-signed x509 certificate
+//
+// All keys types that are implemented via crypto.Signer are supported (This
+// includes *rsa.PrivateKey and *ecdsa.PrivateKey.)
+func NewSelfSignedCert(cfg TLSCertConfig, key crypto.Signer) (*x509.Certificate, error) {
+	certDERBytes, err := newSelfSignedCertBytes(cfg, key, false)
+	if err != nil {
+		return nil, err
+	}
+	return x509.ParseCertificate(certDERBytes)
+}
+
+// NewSelfSignedCertBytes returns a new self-signed certificate in DER encoding
+//
+// All keys types that are implemented via crypto.Signer are supported (This
+// includes *rsa.PrivateKey and *ecdsa.PrivateKey.)
+func NewSelfSignedCertBytes(cfg TLSCertConfig, key crypto.Signer) ([]byte, error) {
+	return newSelfSignedCertBytes(cfg, key, false)
+}
+
+// NewSelfSignedCACert returns a new self-signed CA x509 certificate
+//
+// All keys types that are implemented via crypto.Signer are supported (This
+// includes *rsa.PrivateKey and *ecdsa.PrivateKey.)
+func NewSelfSignedCACert(cfg TLSCertConfig, key crypto.Signer) (*x509.Certificate, error) {
+	certDERBytes, err := newSelfSignedCertBytes(cfg, key, true)
+	if err != nil {
+		return nil, err
+	}
+	return x509.ParseCertificate(certDERBytes)
+}
+
+// NewSelfSignedCACertBytes returns a new self-signed CA certificate in DER encoding
+//
+// All keys types that are implemented via crypto.Signer are supported (This
+// includes *rsa.PrivateKey and *ecdsa.PrivateKey.)
+func NewSelfSignedCACertBytes(cfg TLSCertConfig, key crypto.Signer) ([]byte, error) {
+	return newSelfSignedCertBytes(cfg, key, true)
+}
+
+// NewSignedCert returns a new certificate signed by given ca key and certificate
+//
+// All keys types that are implemented via crypto.Signer are supported (This
+// includes *rsa.PrivateKey and *ecdsa.PrivateKey.)
+func NewSignedCert(cfg TLSCertConfig, key crypto.Signer, caKey crypto.Signer, caCert *x509.Certificate) (*x509.Certificate, error) {
+	certBytes, err := newSignedCertBytes(cfg, key, caKey, caCert)
 	if err != nil {
 		return nil, err
 	}
 	return x509.ParseCertificate(certBytes)
 }
 
-// NewSignedCert returns a new certificate signed by given ca key and certificate
-func NewSignedCert(cfg TLSCertConfig, key *rsa.PrivateKey, caKey *rsa.PrivateKey, caCert *x509.Certificate) (*x509.Certificate, error) {
+// Based in the code https://golang.org/src/crypto/tls/generate_cert.go
+func newSignedCertBytes(cfg TLSCertConfig, key crypto.Signer, caKey crypto.Signer, caCert *x509.Certificate) ([]byte, error) {
+	if len(cfg.Organization) == 0 {
+		cfg.Organization = []string{
+			"Acme Co",
+		}
+	}
+
 	serial, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
 	if err != nil {
 		return nil, err
-	}
-
-	if cfg.CommonName == "" {
-		return nil, fmt.Errorf("MUST provide a valid CommonName")
 	}
 
 	template := x509.Certificate{
@@ -150,19 +236,51 @@ func NewSignedCert(cfg TLSCertConfig, key *rsa.PrivateKey, caKey *rsa.PrivateKey
 			CommonName:   cfg.CommonName,
 			Organization: cfg.Organization,
 		},
-		DNSNames:     cfg.DNSNames,
-		IPAddresses:  cfg.IPs,
-		SerialNumber: serial,
-		NotBefore:    caCert.NotBefore,
-		NotAfter:     time.Now().Add(oneYear).UTC(),
-		KeyUsage:     x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
-		ExtKeyUsage:  cfg.Usages,
+		DNSNames:              cfg.DNSNames,
+		IPAddresses:           cfg.IPs,
+		SerialNumber:          serial,
+		NotBefore:             caCert.NotBefore,
+		NotAfter:              time.Now().Add(oneYear * 10).UTC(),
+		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:           cfg.Usages,
+		BasicConstraintsValid: true,
 	}
 
 	// The parameter pub is the public key of the signee and priv is the private key of the signer.
-	certBytes, err := x509.CreateCertificate(rand.Reader, &template, caCert, key.Public(), caKey)
+	return x509.CreateCertificate(rand.Reader, &template, caCert, key.Public(), caKey)
+}
+
+// Based in the code https://golang.org/src/crypto/tls/generate_cert.go
+func newSelfSignedCertBytes(cfg TLSCertConfig, key crypto.Signer, isCA bool) ([]byte, error) {
+	if len(cfg.Organization) == 0 {
+		cfg.Organization = []string{
+			"Acme Co",
+		}
+	}
+
+	now := time.Now()
+	serial, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
 	if err != nil {
 		return nil, err
 	}
-	return x509.ParseCertificate(certBytes)
+	template := x509.Certificate{
+		SerialNumber: serial,
+		Subject: pkix.Name{
+			CommonName:   cfg.CommonName,
+			Organization: cfg.Organization,
+		},
+		NotBefore:             now.UTC(),
+		NotAfter:              now.Add(oneYear * 10).UTC(),
+		IPAddresses:           cfg.IPs,
+		DNSNames:              cfg.DNSNames,
+		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:           cfg.Usages,
+		BasicConstraintsValid: true,
+	}
+	if isCA {
+		template.IsCA = isCA
+		template.KeyUsage |= x509.KeyUsageCertSign
+	}
+
+	return x509.CreateCertificate(rand.Reader, &template, &template, key.Public(), key)
 }
