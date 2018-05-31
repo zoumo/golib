@@ -25,7 +25,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"encoding/pem"
 	"fmt"
 	"math/big"
 	"net"
@@ -82,6 +81,20 @@ func LoadX509KeyPair(certFile, keyFile string) (*TLSCert, error) {
 	if err != nil {
 		return nil, err
 	}
+	return convert(cert)
+}
+
+// X509KeyPair parses a public/private key pair from a pair of
+// PEM encoded data.
+func X509KeyPair(certPEMBlock, keyPEMBlock []byte) (*TLSCert, error) {
+	cert, err := tls.X509KeyPair(certPEMBlock, keyPEMBlock)
+	if err != nil {
+		return nil, err
+	}
+	return convert(cert)
+}
+
+func convert(cert tls.Certificate) (*TLSCert, error) {
 	x509Cert, err := x509.ParseCertificate(cert.Certificate[0])
 	if err != nil {
 		return nil, err
@@ -104,14 +117,22 @@ func LoadX509KeyPair(certFile, keyFile string) (*TLSCert, error) {
 	}, nil
 }
 
-// X509KeyPair parses a public/private key pair from a pair of
-// PEM encoded data.
-func X509KeyPair(certPEMBlock, keyPEMBlock []byte) (*x509.Certificate, error) {
-	cert, err := tls.X509KeyPair(certPEMBlock, keyPEMBlock)
-	if err != nil {
-		return nil, err
+func x509ToTLSCert(x509Cert *x509.Certificate) *TLSCert {
+	return &TLSCert{
+		NotBefore: x509Cert.NotAfter,
+		NotAfter:  x509Cert.NotAfter,
+		Issuer: PkixName{
+			CommonName:   x509Cert.Issuer.CommonName,
+			Organization: x509Cert.Issuer.Organization,
+		},
+		Subject: PkixName{
+			CommonName:   x509Cert.Subject.CommonName,
+			Organization: x509Cert.Subject.Organization,
+		},
+		DNSNames:    x509Cert.DNSNames,
+		IPAddresses: x509Cert.IPAddresses,
+		X509Cert:    x509Cert,
 	}
-	return x509.ParseCertificate(cert.Certificate[0])
 }
 
 // NewPrivateKey creates a new RSA private key
@@ -139,31 +160,6 @@ func NewECDSAPrivateKey(curve string) (*ecdsa.PrivateKey, error) {
 		return nil, err
 	}
 	return priv, nil
-}
-
-// PEMBlockForKey returns a pemBlock for ras private key
-func PEMBlockForKey(key *rsa.PrivateKey) *pem.Block {
-	return &pem.Block{
-		Type:  "RSA PRIVATE KEY",
-		Bytes: x509.MarshalPKCS1PrivateKey(key),
-	}
-}
-
-// PEMBlockForECDSAKey returns a pemBlock for ecdsa private key
-func PEMBlockForECDSAKey(key *ecdsa.PrivateKey) *pem.Block {
-	bytes, _ := x509.MarshalECPrivateKey(key)
-	return &pem.Block{
-		Type:  "RSA PRIVATE KEY",
-		Bytes: bytes,
-	}
-}
-
-// PEMBlockForCert returns  a pemBlock for x509 certificate
-func PEMBlockForCert(derBytes []byte) *pem.Block {
-	return &pem.Block{
-		Type:  "CERTIFICATE",
-		Bytes: derBytes,
-	}
 }
 
 // NewSelfSignedCert returns a new self-signed x509 certificate
