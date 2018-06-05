@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"io"
+	"io/ioutil"
 )
 
 // PEM contains the raw bytes and a block of pem
@@ -34,6 +35,11 @@ func NewPEMFromBytes(raw []byte) *PEM {
 // Encode writes the PEM encoding of block to out.
 func (p *PEM) Encode(out io.Writer) error {
 	return pem.Encode(out, p.Block)
+}
+
+// WriteFile writes the PEM encoding to a file
+func (p *PEM) WriteFile(f string) error {
+	return ioutil.WriteFile(f, p.Raw, 0664)
 }
 
 // PEMBlockForKey returns a pemBlock for ras private key
