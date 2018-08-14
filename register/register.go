@@ -44,8 +44,8 @@ type Config struct {
 	OverrideAllowed bool
 }
 
-// NewRegister returns a new register
-func NewRegister(config *Config) *Register {
+// New returns a new register
+func New(config *Config) *Register {
 	if config == nil {
 		config = defaultConfig
 	}
