@@ -3,22 +3,77 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:e2b86e41f3d669fc36b50d31d32d22c8ac656c75aa5ea89717ce7177e134ff2a"
+  name = "github.com/golang/glog"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "23def4e6c14b4da8ac2ed8007337bc5eb5007998"
+
+[[projects]]
+  branch = "master"
+  digest = "1:ba051d98e3c3917d6b73286a16fa6f6c0e5b88205f74c1ca4381b473012d273c"
   name = "github.com/keybase/go-ps"
   packages = [
     ".",
-    "darwincgo"
+    "darwincgo",
   ]
+  pruneopts = "NUT"
   revision = "668c8856d9992f97248b3177d45743d2cc1068db"
 
 [[projects]]
+  digest = "1:714d08a4c71486c3f216e04379ada1476e63937b88fd189d9f06d0e41ce96a61"
   name = "github.com/moby/moby"
   packages = ["pkg/reexec"]
+  pruneopts = "NUT"
   revision = "092cba3727bb9b4a2f0e922cd6c0f93ea270e363"
   version = "v1.13.1"
+
+[[projects]]
+  branch = "master"
+  digest = "1:76ee51c3f468493aff39dbacc401e8831fbb765104cbf613b89bef01cf4bad70"
+  name = "golang.org/x/net"
+  packages = ["context"]
+  pruneopts = "NUT"
+  revision = "c44066c5c816ec500d459a2a324a753f78531ae0"
+
+[[projects]]
+  branch = "master"
+  digest = "1:c9e7a4b4d47c0ed205d257648b0e5b0440880cb728506e318f8ac7cd36270bc4"
+  name = "golang.org/x/time"
+  packages = ["rate"]
+  pruneopts = "NUT"
+  revision = "fbb02b2291d28baffd63558aa44b4b56f178d650"
+
+[[projects]]
+  branch = "master"
+  digest = "1:edab5f502d4ce96962379fdf46278d0ec899b2cd3014bb1708768a38cbdf2676"
+  name = "k8s.io/apimachinery"
+  packages = [
+    "pkg/util/clock",
+    "pkg/util/runtime",
+    "pkg/util/wait",
+  ]
+  pruneopts = "NUT"
+  revision = "b7f9f1fa80aef2c4d97c27d38bba371e6caccb47"
+
+[[projects]]
+  digest = "1:f76cea4ba87da035909d054629a78391a873e25d81b8a0baa276907ad2be34de"
+  name = "k8s.io/client-go"
+  packages = ["util/workqueue"]
+  pruneopts = "NUT"
+  revision = "1638f8970cefaa404ff3a62950f88b08292b2696"
+  version = "v9.0.0"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "2231c23a25b3d1d152f6f8a6a1c62eb9d68505bee70001f92eabfd94c31b6c5a"
+  input-imports = [
+    "github.com/golang/glog",
+    "github.com/keybase/go-ps",
+    "github.com/moby/moby/pkg/reexec",
+    "k8s.io/apimachinery/pkg/util/runtime",
+    "k8s.io/apimachinery/pkg/util/wait",
+    "k8s.io/client-go/util/workqueue",
+  ]
   solver-name = "gps-cdcl"
   solver-version = 1
