@@ -69,7 +69,12 @@ func PEMBlockForECDSAKey(key *ecdsa.PrivateKey) *PEM {
 	return NewPEM(&pem.Block{Type: "EC PRIVATE KEY", Bytes: bytes})
 }
 
-// PEMBlockForCert returns  a pemBlock for x509 certificate
+// PEMBlockForCert returns a pemBlock for x509 certificate
 func PEMBlockForCert(derBytes []byte) *PEM {
 	return NewPEM(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
+}
+
+// PEMBlockForCertRequest returns a pemBlock for certificate request
+func PEMBlockForCertRequest(csrBytes []byte) *PEM {
+	return NewPEM(&pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csrBytes})
 }

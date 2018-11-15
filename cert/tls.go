@@ -162,6 +162,26 @@ func NewECDSAPrivateKey(curve string) (*ecdsa.PrivateKey, error) {
 	return priv, nil
 }
 
+// NewCertRequest returns a new x509 certificate request
+func NewCertRequest(cfg TLSCertConfig, key crypto.Signer) ([]byte, error) {
+	if len(cfg.Organization) == 0 {
+		cfg.Organization = []string{
+			"Acme Co",
+		}
+	}
+
+	template := x509.CertificateRequest{
+		Subject: pkix.Name{
+			CommonName:   cfg.CommonName,
+			Organization: cfg.Organization,
+		},
+		IPAddresses: cfg.IPs,
+		DNSNames:    cfg.DNSNames,
+	}
+
+	return x509.CreateCertificateRequest(rand.Reader, &template, key)
+}
+
 // NewSelfSignedCert returns a new self-signed x509 certificate
 //
 // All keys types that are implemented via crypto.Signer are supported (This
