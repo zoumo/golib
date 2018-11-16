@@ -46,8 +46,8 @@ type PkixName struct {
 	CommonName string `json:"commonName,omitempty"`
 }
 
-// TLSCert represents the external cert api secret for https
-type TLSCert struct {
+// TLSCertificate represents the external cert api secret for https
+type TLSCertificate struct {
 	// certificate is not valid before this time
 	NotBefore time.Time `json:"notBefore,omitempty"`
 	// certificate is not valid after this time
@@ -65,8 +65,8 @@ type TLSCert struct {
 	X509Cert *x509.Certificate `json:"-"`
 }
 
-// TLSCertConfig contains various common config for creating a certificate
-type TLSCertConfig struct {
+// Options contains various common Options for creating a certificate
+type Options struct {
 	CommonName   string
 	Organization []string
 	DNSNames     []string
@@ -76,7 +76,7 @@ type TLSCertConfig struct {
 
 // LoadX509KeyPair reads and parses a public/private key pair from a pair
 // of files. The files must contain PEM encoded data.
-func LoadX509KeyPair(certFile, keyFile string) (*TLSCert, error) {
+func LoadX509KeyPair(certFile, keyFile string) (*TLSCertificate, error) {
 	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
 	if err != nil {
 		return nil, err
@@ -86,7 +86,7 @@ func LoadX509KeyPair(certFile, keyFile string) (*TLSCert, error) {
 
 // X509KeyPair parses a public/private key pair from a pair of
 // PEM encoded data.
-func X509KeyPair(certPEMBlock, keyPEMBlock []byte) (*TLSCert, error) {
+func X509KeyPair(certPEMBlock, keyPEMBlock []byte) (*TLSCertificate, error) {
 	cert, err := tls.X509KeyPair(certPEMBlock, keyPEMBlock)
 	if err != nil {
 		return nil, err
@@ -94,12 +94,12 @@ func X509KeyPair(certPEMBlock, keyPEMBlock []byte) (*TLSCert, error) {
 	return convert(cert)
 }
 
-func convert(cert tls.Certificate) (*TLSCert, error) {
+func convert(cert tls.Certificate) (*TLSCertificate, error) {
 	x509Cert, err := x509.ParseCertificate(cert.Certificate[0])
 	if err != nil {
 		return nil, err
 	}
-	return &TLSCert{
+	return &TLSCertificate{
 		NotBefore: x509Cert.NotAfter,
 		NotAfter:  x509Cert.NotAfter,
 		Issuer: PkixName{
@@ -117,8 +117,8 @@ func convert(cert tls.Certificate) (*TLSCert, error) {
 	}, nil
 }
 
-func x509ToTLSCert(x509Cert *x509.Certificate) *TLSCert {
-	return &TLSCert{
+func x509ToTLSCertificate(x509Cert *x509.Certificate) *TLSCertificate {
+	return &TLSCertificate{
 		NotBefore: x509Cert.NotAfter,
 		NotAfter:  x509Cert.NotAfter,
 		Issuer: PkixName{
@@ -162,8 +162,17 @@ func NewECDSAPrivateKey(curve string) (*ecdsa.PrivateKey, error) {
 	return priv, nil
 }
 
-// NewCertRequest returns a new x509 certificate request
-func NewCertRequest(cfg TLSCertConfig, key crypto.Signer) ([]byte, error) {
+// NewCertificateRequest returns a new x509 certificate request
+func NewCertificateRequest(cfg Options, key crypto.Signer) (*x509.CertificateRequest, error) {
+	csrDERBytes, err := NewCertificateRequestBytes(cfg, key)
+	if err != nil {
+		return nil, err
+	}
+	return x509.ParseCertificateRequest(csrDERBytes)
+}
+
+// NewCertificateRequestBytes returns a new certificate bytes in DER encoding
+func NewCertificateRequestBytes(cfg Options, key crypto.Signer) ([]byte, error) {
 	if len(cfg.Organization) == 0 {
 		cfg.Organization = []string{
 			"Acme Co",
@@ -182,32 +191,32 @@ func NewCertRequest(cfg TLSCertConfig, key crypto.Signer) ([]byte, error) {
 	return x509.CreateCertificateRequest(rand.Reader, &template, key)
 }
 
-// NewSelfSignedCert returns a new self-signed x509 certificate
+// NewSelfSignedCertificate returns a new self-signed x509 certificate
 //
 // All keys types that are implemented via crypto.Signer are supported (This
 // includes *rsa.PrivateKey and *ecdsa.PrivateKey.)
-func NewSelfSignedCert(cfg TLSCertConfig, key crypto.Signer) (*x509.Certificate, error) {
-	certDERBytes, err := newSelfSignedCertBytes(cfg, key, false)
+func NewSelfSignedCertificate(cfg Options, key crypto.Signer) (*x509.Certificate, error) {
+	certDERBytes, err := newSelfSignedCertificateBytes(cfg, key, false)
 	if err != nil {
 		return nil, err
 	}
 	return x509.ParseCertificate(certDERBytes)
 }
 
-// NewSelfSignedCertBytes returns a new self-signed certificate in DER encoding
+// NewSelfSignedCertificateBytes returns a new self-signed certificate in DER encoding
 //
 // All keys types that are implemented via crypto.Signer are supported (This
 // includes *rsa.PrivateKey and *ecdsa.PrivateKey.)
-func NewSelfSignedCertBytes(cfg TLSCertConfig, key crypto.Signer) ([]byte, error) {
-	return newSelfSignedCertBytes(cfg, key, false)
+func NewSelfSignedCertificateBytes(cfg Options, key crypto.Signer) ([]byte, error) {
+	return newSelfSignedCertificateBytes(cfg, key, false)
 }
 
 // NewSelfSignedCACert returns a new self-signed CA x509 certificate
 //
 // All keys types that are implemented via crypto.Signer are supported (This
 // includes *rsa.PrivateKey and *ecdsa.PrivateKey.)
-func NewSelfSignedCACert(cfg TLSCertConfig, key crypto.Signer) (*x509.Certificate, error) {
-	certDERBytes, err := newSelfSignedCertBytes(cfg, key, true)
+func NewSelfSignedCACert(cfg Options, key crypto.Signer) (*x509.Certificate, error) {
+	certDERBytes, err := newSelfSignedCertificateBytes(cfg, key, true)
 	if err != nil {
 		return nil, err
 	}
@@ -218,15 +227,15 @@ func NewSelfSignedCACert(cfg TLSCertConfig, key crypto.Signer) (*x509.Certificat
 //
 // All keys types that are implemented via crypto.Signer are supported (This
 // includes *rsa.PrivateKey and *ecdsa.PrivateKey.)
-func NewSelfSignedCACertBytes(cfg TLSCertConfig, key crypto.Signer) ([]byte, error) {
-	return newSelfSignedCertBytes(cfg, key, true)
+func NewSelfSignedCACertBytes(cfg Options, key crypto.Signer) ([]byte, error) {
+	return newSelfSignedCertificateBytes(cfg, key, true)
 }
 
 // NewSignedCert returns a new certificate signed by given ca key and certificate
 //
 // All keys types that are implemented via crypto.Signer are supported (This
 // includes *rsa.PrivateKey and *ecdsa.PrivateKey.)
-func NewSignedCert(cfg TLSCertConfig, key crypto.Signer, caKey crypto.Signer, caCert *x509.Certificate) (*x509.Certificate, error) {
+func NewSignedCert(cfg Options, key crypto.Signer, caKey crypto.Signer, caCert *x509.Certificate) (*x509.Certificate, error) {
 	certBytes, err := newSignedCertBytes(cfg, key, caKey, caCert)
 	if err != nil {
 		return nil, err
@@ -235,7 +244,7 @@ func NewSignedCert(cfg TLSCertConfig, key crypto.Signer, caKey crypto.Signer, ca
 }
 
 // Based in the code https://golang.org/src/crypto/tls/generate_cert.go
-func newSignedCertBytes(cfg TLSCertConfig, key crypto.Signer, caKey crypto.Signer, caCert *x509.Certificate) ([]byte, error) {
+func newSignedCertBytes(cfg Options, key crypto.Signer, caKey crypto.Signer, caCert *x509.Certificate) ([]byte, error) {
 	if len(cfg.Organization) == 0 {
 		cfg.Organization = []string{
 			"Acme Co",
@@ -267,7 +276,7 @@ func newSignedCertBytes(cfg TLSCertConfig, key crypto.Signer, caKey crypto.Signe
 }
 
 // Based in the code https://golang.org/src/crypto/tls/generate_cert.go
-func newSelfSignedCertBytes(cfg TLSCertConfig, key crypto.Signer, isCA bool) ([]byte, error) {
+func newSelfSignedCertificateBytes(cfg Options, key crypto.Signer, isCA bool) ([]byte, error) {
 	if len(cfg.Organization) == 0 {
 		cfg.Organization = []string{
 			"Acme Co",

@@ -58,23 +58,23 @@ func (p *PEM) WriteFile(f string) error {
 	return ioutil.WriteFile(f, p.Raw, 0664)
 }
 
-// PEMBlockForKey returns a pemBlock for ras private key
-func PEMBlockForKey(key *rsa.PrivateKey) *PEM {
+// NewPEMForKey returns a pemBlock for ras private key
+func NewPEMForKey(key *rsa.PrivateKey) *PEM {
 	return NewPEM(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)})
 }
 
-// PEMBlockForECDSAKey returns a pemBlock for ecdsa private key
-func PEMBlockForECDSAKey(key *ecdsa.PrivateKey) *PEM {
+// NewPEMForECDSAKey returns a pemBlock for ecdsa private key
+func NewPEMForECDSAKey(key *ecdsa.PrivateKey) *PEM {
 	bytes, _ := x509.MarshalECPrivateKey(key)
 	return NewPEM(&pem.Block{Type: "EC PRIVATE KEY", Bytes: bytes})
 }
 
-// PEMBlockForCert returns a pemBlock for x509 certificate
-func PEMBlockForCert(derBytes []byte) *PEM {
+// NewPEMForCertificate returns a pemBlock for x509 certificate
+func NewPEMForCertificate(derBytes []byte) *PEM {
 	return NewPEM(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
 }
 
-// PEMBlockForCertRequest returns a pemBlock for certificate request
-func PEMBlockForCertRequest(csrBytes []byte) *PEM {
+// NewPEMForCertificateRequest returns a pemBlock for certificate request
+func NewPEMForCertificateRequest(csrBytes []byte) *PEM {
 	return NewPEM(&pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csrBytes})
 }
