@@ -20,10 +20,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/golang/glog"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/workqueue"
+	"k8s.io/klog"
 )
 
 const (
@@ -161,12 +161,12 @@ func (sq *Queue) handleSyncError(err error, obj interface{}) {
 	}
 
 	if sq.queue.NumRequeues(obj) < sq.maxRetries {
-		glog.Warningf("Error handling obj %v retry: %v, err: %v", obj, sq.queue.NumRequeues(obj), err)
+		klog.Warningf("Error handling obj %v retry: %v, err: %v", obj, sq.queue.NumRequeues(obj), err)
 		sq.queue.AddRateLimited(obj)
 		return
 	}
 
 	utilruntime.HandleError(err)
-	glog.Warningf("Dropping object %v from the queue, err: %v", obj, err)
+	klog.Warningf("Dropping object %v from the queue, err: %v", obj, err)
 	sq.queue.Forget(obj)
 }
