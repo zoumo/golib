@@ -37,6 +37,30 @@
   revision = "c44066c5c816ec500d459a2a324a753f78531ae0"
 
 [[projects]]
+  digest = "1:44c631134380c5fbe7378bf8bfe49c1e703ded0f4beb1726fc29bc56b4f9b147"
+  name = "golang.org/x/text"
+  packages = [
+    "encoding",
+    "encoding/charmap",
+    "encoding/internal",
+    "encoding/internal/identifier",
+    "encoding/japanese",
+    "encoding/korean",
+    "encoding/simplifiedchinese",
+    "encoding/traditionalchinese",
+    "encoding/unicode",
+    "encoding/unicode/utf32",
+    "internal/gen",
+    "internal/utf8internal",
+    "runes",
+    "transform",
+    "unicode/cldr",
+  ]
+  pruneopts = "NUT"
+  revision = "f21a4dfb5e38f5895301dc265a8def02365cc3d0"
+  version = "v0.3.0"
+
+[[projects]]
   branch = "master"
   digest = "1:c9e7a4b4d47c0ed205d257648b0e5b0440880cb728506e318f8ac7cd36270bc4"
   name = "golang.org/x/time"
@@ -78,6 +102,15 @@
   input-imports = [
     "github.com/keybase/go-ps",
     "github.com/moby/moby/pkg/reexec",
+    "golang.org/x/text/encoding",
+    "golang.org/x/text/encoding/charmap",
+    "golang.org/x/text/encoding/japanese",
+    "golang.org/x/text/encoding/korean",
+    "golang.org/x/text/encoding/simplifiedchinese",
+    "golang.org/x/text/encoding/traditionalchinese",
+    "golang.org/x/text/encoding/unicode",
+    "golang.org/x/text/encoding/unicode/utf32",
+    "golang.org/x/text/transform",
     "k8s.io/apimachinery/pkg/util/runtime",
     "k8s.io/apimachinery/pkg/util/wait",
     "k8s.io/client-go/util/workqueue",
