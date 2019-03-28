@@ -3,14 +3,6 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:e2b86e41f3d669fc36b50d31d32d22c8ac656c75aa5ea89717ce7177e134ff2a"
-  name = "github.com/golang/glog"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "23def4e6c14b4da8ac2ed8007337bc5eb5007998"
-
-[[projects]]
-  branch = "master"
   digest = "1:ba051d98e3c3917d6b73286a16fa6f6c0e5b88205f74c1ca4381b473012d273c"
   name = "github.com/keybase/go-ps"
   packages = [
@@ -70,7 +62,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:edab5f502d4ce96962379fdf46278d0ec899b2cd3014bb1708768a38cbdf2676"
+  digest = "1:ae4f3f7d5d462e66d22c0b21febf9ab4a7142dd5d7ecb6f7f31983348e9f4993"
   name = "k8s.io/apimachinery"
   packages = [
     "pkg/util/clock",
@@ -78,7 +70,7 @@
     "pkg/util/wait",
   ]
   pruneopts = "NUT"
-  revision = "b7f9f1fa80aef2c4d97c27d38bba371e6caccb47"
+  revision = "4ceb6b6c5db56a2f8f454dd837c07160a3d6e131"
 
 [[projects]]
   digest = "1:f76cea4ba87da035909d054629a78391a873e25d81b8a0baa276907ad2be34de"
