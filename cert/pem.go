@@ -17,10 +17,12 @@ limitations under the License.
 package cert
 
 import (
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"io"
 	"io/ioutil"
 )
@@ -31,6 +33,16 @@ type PEM struct {
 	Block *pem.Block
 }
 
+// Encode writes the PEM encoding of block to out.
+func (p *PEM) Encode(out io.Writer) error {
+	return pem.Encode(out, p.Block)
+}
+
+// WriteFile writes the PEM encoding to a file
+func (p *PEM) WriteFile(f string) error {
+	return ioutil.WriteFile(f, p.Raw, 0644)
+}
+
 // NewPEM creates a new PEM struct from pem.Block
 func NewPEM(b *pem.Block) *PEM {
 	return &PEM{
@@ -39,27 +51,30 @@ func NewPEM(b *pem.Block) *PEM {
 	}
 }
 
-// NewPEMFromBytes creates a new PEM struct from ray bytes
-func NewPEMFromBytes(raw []byte) *PEM {
-	b, _ := pem.Decode(raw)
+// NewPEMForBytes creates a new PEM struct from raw bytes
+func NewPEMForBytes(raw []byte) *PEM {
+	derBlock, _ := pem.Decode(raw)
 	return &PEM{
 		Raw:   raw,
-		Block: b,
+		Block: derBlock,
 	}
 }
 
-// Encode writes the PEM encoding of block to out.
-func (p *PEM) Encode(out io.Writer) error {
-	return pem.Encode(out, p.Block)
+// NewPEMForPrivateKey returns a pemBlock for crypto private key
+// It returns an error if the key is not *rsa.PrivateKey or *ecdsa.PrivateKey
+func NewPEMForPrivateKey(key crypto.PrivateKey) (*PEM, error) {
+	switch pkey := key.(type) {
+	case *rsa.PrivateKey:
+		return NewPEMForRSAKey(pkey), nil
+	case *ecdsa.PrivateKey:
+		return NewPEMForECDSAKey(pkey), nil
+	default:
+		return nil, errors.New("tls: found unknown private key type in PKCS#8 wrapping")
+	}
 }
 
-// WriteFile writes the PEM encoding to a file
-func (p *PEM) WriteFile(f string) error {
-	return ioutil.WriteFile(f, p.Raw, 0664)
-}
-
-// NewPEMForKey returns a pemBlock for ras private key
-func NewPEMForKey(key *rsa.PrivateKey) *PEM {
+// NewPEMForRSAKey returns a pemBlock for ras private key
+func NewPEMForRSAKey(key *rsa.PrivateKey) *PEM {
 	return NewPEM(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)})
 }
 
@@ -75,6 +90,6 @@ func NewPEMForCertificate(derBytes []byte) *PEM {
 }
 
 // NewPEMForCertificateRequest returns a pemBlock for certificate request
-func NewPEMForCertificateRequest(csrBytes []byte) *PEM {
-	return NewPEM(&pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csrBytes})
+func NewPEMForCertificateRequest(derBytes []byte) *PEM {
+	return NewPEM(&pem.Block{Type: "CERTIFICATE REQUEST", Bytes: derBytes})
 }
