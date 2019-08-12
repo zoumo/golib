@@ -9,8 +9,10 @@ register is a package for golang to build your own register
 ```
 package main
 
+import "github.com/zoumo/golib/registry"
+
 var (
-	clouds = NewRegister(nil)
+	clouds = registry.New(nil)
 )
 
 type Cloud interface{
