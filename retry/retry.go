@@ -6,6 +6,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
+// ErrWaitTimeout is returned when the condition exited without success.
+var ErrWaitTimeout = wait.ErrWaitTimeout
+
 // Backoff holds parameters applied to a Backoff function.
 // redefined here for convenience
 type Backoff = wait.Backoff
