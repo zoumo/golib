@@ -17,9 +17,10 @@ limitations under the License.
 package shell
 
 import (
-	"os/exec"
 	"reflect"
 	"testing"
+
+	"github.com/zoumo/golib/exec"
 )
 
 func TestQueryEscape(t *testing.T) {
@@ -42,67 +43,10 @@ func TestQueryEscape(t *testing.T) {
 	}
 }
 
-func TestCommand(t *testing.T) {
-
-	tests := []struct {
-		name string
-		args []interface{}
-		want *Cmd
-	}{
-		{"", []interface{}{"echo", "123"}, &Cmd{args: []string{"echo", "123"}}},
-		{"", []interface{}{exec.Command("echo")}, &Cmd{cmd: exec.Command("echo")}},
-		{"", []interface{}{&Cmd{args: []string{"echo"}}}, &Cmd{args: []string{"echo"}}},
-		{"", []interface{}{&Cmd{cmd: exec.Command("echo")}}, &Cmd{cmd: exec.Command("echo")}},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := Command(tt.args...); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Command() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestCmd_Command(t *testing.T) {
-	tests := []struct {
-		name string
-		args []interface{}
-		want *exec.Cmd
-	}{
-		{"", []interface{}{"echo", "123"}, exec.Command(entrypoint, "-c", "echo 123")},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := Command(tt.args...).Command(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Cmd.Command() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestCmd_Pipe(t *testing.T) {
-	tests := []struct {
-		name string
-		cmd  *Cmd
-		args []interface{}
-		want *Cmd
-	}{
-		{"", Command("echo", "123"), []interface{}{"sort"}, &Cmd{args: []string{"sort"}, pre: Command("echo", "123")}},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.cmd.Pipe(tt.args...); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Cmd.Pipe() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestCmd_Run(t *testing.T) {
-
+func TestShell_Run(t *testing.T) {
 	tests := []struct {
 		name    string
-		cmd     *Cmd
+		cmd     *exec.Cmd
 		wantErr bool
 	}{
 		{"", Command("echo", "123").Pipe("sort"), false},
@@ -117,10 +61,10 @@ func TestCmd_Run(t *testing.T) {
 	}
 }
 
-func TestCmd_Output(t *testing.T) {
+func TestShell_Output(t *testing.T) {
 	tests := []struct {
 		name    string
-		cmd     *Cmd
+		cmd     *exec.Cmd
 		want    []byte
 		wantErr bool
 	}{
@@ -145,10 +89,10 @@ func TestCmd_Output(t *testing.T) {
 	}
 }
 
-func TestCmd_CombinedOutput(t *testing.T) {
+func TestShell_CombinedOutput(t *testing.T) {
 	tests := []struct {
 		name    string
-		cmd     *Cmd
+		cmd     *exec.Cmd
 		want    []byte
 		wantErr bool
 	}{
@@ -173,7 +117,7 @@ func TestCmd_CombinedOutput(t *testing.T) {
 	}
 }
 
-func TestCmd_OutputClosure(t *testing.T) {
+func TestShell_OutputClosure(t *testing.T) {
 	tests := []struct {
 		name    string
 		cmd     func(...string) ([]byte, error)
@@ -202,7 +146,7 @@ func TestCmd_OutputClosure(t *testing.T) {
 	}
 }
 
-func TestCmd_OutputClosureManyTimes(t *testing.T) {
+func TestShell_OutputClosureManyTimes(t *testing.T) {
 	type fields struct {
 		args    []string
 		want    []byte
@@ -248,7 +192,7 @@ func TestCmd_OutputClosureManyTimes(t *testing.T) {
 	}
 }
 
-func TestCmd_CombinedOutputClosure(t *testing.T) {
+func TestShell_CombinedOutputClosure(t *testing.T) {
 	tests := []struct {
 		name    string
 		cmd     func(...string) ([]byte, error)
