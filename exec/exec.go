@@ -19,13 +19,10 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os/exec"
 	"time"
-
-	"github.com/keybase/go-ps"
 )
 
 var (
@@ -199,12 +196,7 @@ func (c *Cmd) setDefultProbe(startup *Probe) *Probe {
 	}
 
 	if startup.Handler == nil {
-		startup.Handler = func(cmd *exec.Cmd) error {
-			if running := c.isRunning(cmd); !running {
-				return fmt.Errorf("command is not running")
-			}
-			return nil
-		}
+		startup.Handler = IsCmdRunningHandler
 	}
 	if startup.PeriodSeconds == 0 {
 		startup.PeriodSeconds = 1
@@ -216,24 +208,6 @@ func (c *Cmd) setDefultProbe(startup *Probe) *Probe {
 		startup.SuccessThreshold = 2
 	}
 	return startup
-}
-
-func (c *Cmd) isRunning(cmd *exec.Cmd) bool {
-	if cmd == nil {
-		return false
-	}
-	if cmd.Process == nil {
-		return false
-	}
-	process, err := ps.FindProcess(cmd.Process.Pid)
-	if err != nil {
-		panic(err)
-	}
-	if process == nil && err == nil {
-		// not found
-		return false
-	}
-	return true
 }
 
 func (c *Cmd) RunForever(startup *Probe) error {

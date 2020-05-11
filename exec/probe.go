@@ -24,10 +24,10 @@ const (
 // Probe describes a health check to be performed against a container to determine whether it is
 // alive or ready to receive traffic.
 type Probe struct {
-	// The action taken to determine the health of a container
+	// The action taken to determine the health of a cmd
+	// Default to IsCmdRunningHandler
 	Handler func(running *exec.Cmd) error `json:"handler,inline" protobuf:"bytes,1,opt,name=handler"`
 	// Number of seconds after the container has started before liveness probes are initiated.
-	// More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
 	// +optional
 	InitialDelaySeconds int `json:"initialDelaySeconds,omitempty" protobuf:"varint,2,opt,name=initialDelaySeconds"`
 	// How often (in seconds) to perform the probe.
