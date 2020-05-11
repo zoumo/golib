@@ -19,6 +19,7 @@ package exec
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"io/ioutil"
 	"os/exec"
@@ -487,6 +488,73 @@ func TestCmd_SetStderr(t *testing.T) {
 			}
 			if !reflect.DeepEqual(string(bytes.TrimSpace(got)), string(tt.wantStderr)) {
 				t.Errorf("Cmd.SetStderr() = %v, wantStderr %v", string(got), string(tt.wantStderr))
+			}
+		})
+	}
+}
+
+func TestCmd_RunForever(t *testing.T) {
+	tests := []struct {
+		name      string
+		cmd       *Cmd
+		startup   *Probe
+		wantErr   bool
+		errString string
+	}{
+		{
+			"invalidOption",
+			Command("sort", "-x"),
+			nil,
+			true,
+			"exit status 2",
+		},
+		{
+			"exitInRunForever",
+			Command("sleep", "1"),
+			&Probe{
+				InitialDelaySeconds: 2,
+			},
+			true,
+			ErrExitedInRunForever.Error(),
+		},
+		{
+			"",
+			Command("sleep", "1"),
+			&Probe{
+				SuccessThreshold: 3,
+			},
+			true,
+			ErrExitedInRunForever.Error(),
+		},
+		{
+			"",
+			Command("sleep", "5"),
+			&Probe{
+				SuccessThreshold: 1,
+				FailureThreshold: 1,
+			},
+			false,
+			"",
+		},
+		{
+			"",
+			Command("sleep", "5"),
+			&Probe{
+				Handler: func(*exec.Cmd) error {
+					return errors.New("failed run forever")
+				},
+				SuccessThreshold: 1,
+				FailureThreshold: 1,
+			},
+			true,
+			"probe failed: failed run forever",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.cmd.RunForever(tt.startup)
+			if (err != nil) != tt.wantErr || (err != nil && err.Error() != tt.errString) {
+				t.Errorf("Cmd.RunForever() error = %v, wantErr %v, wantErrStr %v", err, tt.wantErr, tt.errString)
 			}
 		})
 	}

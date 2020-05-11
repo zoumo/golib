@@ -19,9 +19,17 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os/exec"
+	"time"
+
+	"github.com/keybase/go-ps"
+)
+
+var (
+	ErrExitedInRunForever = errors.New("exec: command should not exit in RunForever")
 )
 
 type argsHolder struct {
@@ -185,6 +193,78 @@ func (c *Cmd) Run() error {
 	return c.Wait()
 }
 
+func (c *Cmd) setDefultProbe(startup *Probe) *Probe {
+	if startup == nil {
+		startup = &Probe{}
+	}
+
+	if startup.Handler == nil {
+		startup.Handler = func(cmd *exec.Cmd) error {
+			if running := c.isRunning(cmd); !running {
+				return fmt.Errorf("command is not running")
+			}
+			return nil
+		}
+	}
+	if startup.PeriodSeconds == 0 {
+		startup.PeriodSeconds = 1
+	}
+	if startup.FailureThreshold == 0 {
+		startup.FailureThreshold = 3
+	}
+	if startup.SuccessThreshold == 0 {
+		startup.SuccessThreshold = 2
+	}
+	return startup
+}
+
+func (c *Cmd) isRunning(cmd *exec.Cmd) bool {
+	if cmd == nil {
+		return false
+	}
+	if cmd.Process == nil {
+		return false
+	}
+	process, err := ps.FindProcess(cmd.Process.Pid)
+	if err != nil {
+		panic(err)
+	}
+	if process == nil && err == nil {
+		// not found
+		return false
+	}
+	return true
+}
+
+func (c *Cmd) RunForever(startup *Probe) error {
+	err := c.Start()
+	if err != nil {
+		return err
+	}
+
+	done := make(chan struct{})
+	errC := make(chan error)
+
+	go func() {
+		// wait for command exit
+		errC <- c.Wait()
+	}()
+
+	startup = c.setDefultProbe(startup)
+	worker := newWorker(c.Command(), startup, time.Now(), done)
+
+	select {
+	case err := <-errC:
+		close(done) // stop worder
+		if err != nil {
+			return err
+		}
+		return ErrExitedInRunForever
+	case err := <-worker.run():
+		return err
+	}
+}
+
 // Start starts the specified command but does not wait for it to complete.
 //
 // The Wait method will return the exit code and release associated resources
@@ -265,6 +345,10 @@ func (c *Cmd) Wait() error {
 	if !c.started {
 		return errors.New("exec: not started")
 	}
+	if c.finished {
+		return errors.New("exec: cmd finished")
+	}
+
 	defer func() {
 		c.finished = true
 	}()
