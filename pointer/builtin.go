@@ -44,6 +44,10 @@ func Uint64(i uint64) *uint64 {
 	return &i
 }
 
+func Uintptr(i uintptr) *uintptr {
+	return &i
+}
+
 func Float32(f float32) *float32 {
 	return &f
 }
