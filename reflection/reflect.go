@@ -14,6 +14,7 @@ func IsLiteralType(t reflect.Type) bool {
 	}
 }
 
+// IsCustomType returns true if the type is not predeclared
 func IsCustomType(t reflect.Type) bool {
 	if t.PkgPath() != "" {
 		return true
@@ -32,6 +33,8 @@ func IsCustomType(t reflect.Type) bool {
 	return false
 }
 
+// HasUnexportedField returns true if the struct has unexported fields.
+// It panics if the type's Kind is not Struct.
 func HasUnexportedField(t reflect.Type) bool {
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
@@ -45,8 +48,40 @@ func HasUnexportedField(t reflect.Type) bool {
 	return false
 }
 
+// IsUnexportedField returns true if the structField is not exported.
 func IsUnexportedField(field reflect.StructField) bool {
 	if len(field.PkgPath) > 0 {
+		return true
+	}
+	return false
+}
+
+// Hashable returns true if the type can used as map key
+// see https://blog.golang.org/maps
+func Hashable(in reflect.Type) bool {
+	switch in.Kind() {
+	case reflect.Invalid, reflect.Map, reflect.Func, reflect.Slice:
+		return false
+	case reflect.Struct:
+		for i := 0; i < in.NumField(); i++ {
+			if !Hashable(in.Field(i).Type) {
+				return false
+			}
+		}
+		return true
+	case reflect.Array:
+		return Hashable(in.Elem())
+	}
+	return true
+}
+
+// https://stackoverflow.com/questions/36310538/identify-non-builtin-types-using-reflect?answertab=votes#tab-top
+func IsAnonymousStruct(t reflect.Type) bool {
+	if t.Kind() != reflect.Struct {
+		return false
+	}
+	if len(t.PkgPath()) == 0 && len(t.Name()) == 0 {
+		// not custom and unnamed
 		return true
 	}
 	return false
