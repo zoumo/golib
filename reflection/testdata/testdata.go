@@ -48,7 +48,7 @@ type Struct struct {
 	Struct                   Predeclared
 	StructPtr                *Predeclared
 	UnexportedFieldStruct    UnexportedFieldStruct
-	UnexportedFieldStructPtr *UnexportedFieldStructPtr
+	UnexportedFieldStructPtr *UnexportedFieldStruct
 	Anonymous                struct {
 		String string
 	}
@@ -73,6 +73,7 @@ func NewStruct() Struct {
 		UnexportedFieldStructPtr: &uep,
 	}
 }
+
 func (p Struct) Values() []reflect.Value {
 	var values []reflect.Value
 	values = append(values, reflect.ValueOf(p))
@@ -122,6 +123,7 @@ func NewUnexportedFieldStruct() UnexportedFieldStruct {
 		privateUintptr:    uintptr(1),
 	}
 }
+
 func (p UnexportedFieldStruct) Values() []reflect.Value {
 	var values []reflect.Value
 	values = append(values, reflect.ValueOf(p))
@@ -203,6 +205,7 @@ func NewPredeclared() Predeclared {
 		Uintptr:      uintptr(1),
 	}
 }
+
 func (p Predeclared) Values() []reflect.Value {
 	var values []reflect.Value
 	values = append(values, reflect.ValueOf(p.Bool), reflect.ValueOf(p.MyBool))
@@ -362,8 +365,8 @@ func NewSlice() Slice {
 		MyUintptrPtr:             []*MyUintptr{&p.MyUintptr},
 		String:                   []string{p.String},
 		StringPtr:                []*string{&p.String},
-		Struct:                   p,
-		StructPtr:                &p,
+		Struct:                   []Predeclared{p},
+		StructPtr:                []*Predeclared{&p},
 		Uint:                     []uint{p.Uint},
 		Uint16:                   []uint16{p.Uint16},
 		Uint16Ptr:                []*uint16{&p.Uint16},
@@ -376,10 +379,11 @@ func NewSlice() Slice {
 		UintPtr:                  []*uint{&p.Uint},
 		Uintptr:                  []uintptr{p.Uintptr},
 		UintptrPtr:               []*uintptr{&p.Uintptr},
-		UnexportedFieldStruct:    uep,
-		UnexportedFieldStructPtr: &uep,
+		UnexportedFieldStruct:    []UnexportedFieldStruct{uep},
+		UnexportedFieldStructPtr: []*UnexportedFieldStruct{&uep},
 	}
 }
+
 func (p Slice) Values() []reflect.Value {
 	var values []reflect.Value
 	values = append(values, reflect.ValueOf(p.Bool), reflect.ValueOf(p.BoolPtr), reflect.ValueOf(p.MyBool), reflect.ValueOf(p.MyBoolPtr))
@@ -503,40 +507,40 @@ func NewMap() Map {
 		Int8:                     map[int8]int8{p.Int8: p.Int8},
 		Int8Ptr:                  map[int8]*int8{p.Int8: &p.Int8},
 		IntPtr:                   map[int]*int{p.Int: &p.Int},
-		MyBool:                   map[MyBool]MyBool{p.MyBool: p.Bool},
+		MyBool:                   map[MyBool]MyBool{p.MyBool: p.MyBool},
 		MyBoolPtr:                map[MyBool]*MyBool{p.MyBool: &p.MyBool},
-		MyComplex128:             map[MyComplex128]MyComplex128{p.MyComplex128: p.Complex128},
+		MyComplex128:             map[MyComplex128]MyComplex128{p.MyComplex128: p.MyComplex128},
 		MyComplex128Ptr:          map[MyComplex128]*MyComplex128{p.MyComplex128: &p.MyComplex128},
-		MyComplex64:              map[MyComplex64]MyComplex64{p.MyComplex64: p.Complex64},
+		MyComplex64:              map[MyComplex64]MyComplex64{p.MyComplex64: p.MyComplex64},
 		MyComplex64Ptr:           map[MyComplex64]*MyComplex64{p.MyComplex64: &p.MyComplex64},
-		MyFloat32:                map[MyFloat32]MyFloat32{p.MyFloat32: p.Float32},
+		MyFloat32:                map[MyFloat32]MyFloat32{p.MyFloat32: p.MyFloat32},
 		MyFloat32Ptr:             map[MyFloat32]*MyFloat32{p.MyFloat32: &p.MyFloat32},
-		MyFloat64:                map[MyFloat64]MyFloat64{p.MyFloat64: p.Float64},
+		MyFloat64:                map[MyFloat64]MyFloat64{p.MyFloat64: p.MyFloat64},
 		MyFloat64Ptr:             map[MyFloat64]*MyFloat64{p.MyFloat64: &p.MyFloat64},
-		MyInt:                    map[MyInt]MyInt{p.MyInt: p.Int},
-		MyInt16:                  map[MyInt16]MyInt16{p.MyInt16: p.Int16},
+		MyInt:                    map[MyInt]MyInt{p.MyInt: p.MyInt},
+		MyInt16:                  map[MyInt16]MyInt16{p.MyInt16: p.MyInt16},
 		MyInt16Ptr:               map[MyInt16]*MyInt16{p.MyInt16: &p.MyInt16},
-		MyInt32:                  map[MyInt32]MyInt32{p.MyInt32: p.Int32},
+		MyInt32:                  map[MyInt32]MyInt32{p.MyInt32: p.MyInt32},
 		MyInt32Ptr:               map[MyInt32]*MyInt32{p.MyInt32: &p.MyInt32},
-		MyInt64:                  map[MyInt64]MyInt64{p.MyInt64: p.Int64},
+		MyInt64:                  map[MyInt64]MyInt64{p.MyInt64: p.MyInt64},
 		MyInt64Ptr:               map[MyInt64]*MyInt64{p.MyInt64: &p.MyInt64},
-		MyInt8:                   map[MyInt8]MyInt8{p.MyInt8: p.Int8},
+		MyInt8:                   map[MyInt8]MyInt8{p.MyInt8: p.MyInt8},
 		MyInt8Ptr:                map[MyInt8]*MyInt8{p.MyInt8: &p.MyInt8},
 		MyIntPtr:                 map[MyInt]*MyInt{p.MyInt: &p.MyInt},
 		MyMap:                    MyMap{"mymap": "mymap"},
-		MyString:                 map[MyString]MyString{p.MyString: p.String},
+		MyString:                 map[MyString]MyString{p.MyString: p.MyString},
 		MyStringPtr:              map[MyString]*MyString{p.MyString: &p.MyString},
-		MyUint:                   map[MyUint]MyUint{p.MyUint: p.Uint},
-		MyUint16:                 map[MyUint16]MyUint16{p.MyUint16: p.Uint16},
+		MyUint:                   map[MyUint]MyUint{p.MyUint: p.MyUint},
+		MyUint16:                 map[MyUint16]MyUint16{p.MyUint16: p.MyUint16},
 		MyUint16Ptr:              map[MyUint16]*MyUint16{p.MyUint16: &p.MyUint16},
-		MyUint32:                 map[MyUint32]MyUint32{p.MyUint32: p.Uint32},
+		MyUint32:                 map[MyUint32]MyUint32{p.MyUint32: p.MyUint32},
 		MyUint32Ptr:              map[MyUint32]*MyUint32{p.MyUint32: &p.MyUint32},
-		MyUint64:                 map[MyUint64]MyUint64{p.MyUint64: p.Uint64},
+		MyUint64:                 map[MyUint64]MyUint64{p.MyUint64: p.MyUint64},
 		MyUint64Ptr:              map[MyUint64]*MyUint64{p.MyUint64: &p.MyUint64},
-		MyUint8:                  map[MyUint8]MyUint8{p.MyUint8: p.Uint8},
+		MyUint8:                  map[MyUint8]MyUint8{p.MyUint8: p.MyUint8},
 		MyUint8Ptr:               map[MyUint8]*MyUint8{p.MyUint8: &p.MyUint8},
 		MyUintPtr:                map[MyUint]*MyUint{p.MyUint: &p.MyUint},
-		MyUintptr:                map[MyUintptr]MyUintptr{p.MyUintptr: p.Uintptr},
+		MyUintptr:                map[MyUintptr]MyUintptr{p.MyUintptr: p.MyUintptr},
 		MyUintptrPtr:             map[MyUintptr]*MyUintptr{p.MyUintptr: &p.MyUintptr},
 		String:                   map[string]string{p.String: p.String},
 		StringPtr:                map[string]*string{p.String: &p.String},
@@ -558,6 +562,7 @@ func NewMap() Map {
 		UnexportedFieldStructPtr: map[string]*UnexportedFieldStruct{"struct": &uep},
 	}
 }
+
 func (p Map) Values() []reflect.Value {
 	var values []reflect.Value
 	values = append(values, reflect.ValueOf(p.Bool), reflect.ValueOf(p.BoolPtr), reflect.ValueOf(p.MyBool), reflect.ValueOf(p.MyBoolPtr))

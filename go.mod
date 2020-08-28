@@ -3,6 +3,7 @@ module github.com/zoumo/golib
 go 1.12
 
 require (
+	github.com/dave/jennifer v1.4.0
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
 	github.com/moby/moby v1.13.1

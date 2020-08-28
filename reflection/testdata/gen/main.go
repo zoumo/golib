@@ -75,7 +75,7 @@ func generatePredeclared(f *jen.File) {
 				d[jen.Id(myType(i))] = jen.Id(myType(i)).Parens(v.Clone())
 			}
 		}))),
-	)
+	).Line()
 
 	f.Func().Params(jen.Id("p").Id("Predeclared")).Id("Values").Params().Index().Qual("reflect", "Value").BlockFunc(func(g *jen.Group) {
 		g.Var().Id("values").Index().Qual("reflect", "Value")
@@ -97,7 +97,7 @@ func generateUnexportedFieldStruct(f *jen.File) {
 		for _, i := range predeclared {
 			g.Id("private" + Capitalize(i.String())).Id(i.String())
 		}
-	})
+	}).Line()
 
 	f.Func().Id("NewUnexportedFieldStruct").Params().Id("UnexportedFieldStruct").Block(
 		jen.Return(jen.Id("UnexportedFieldStruct").Values(jen.DictFunc(func(d jen.Dict) {
@@ -107,7 +107,7 @@ func generateUnexportedFieldStruct(f *jen.File) {
 				d[jen.Id("private"+Capitalize(i.String()))] = v
 			}
 		}))),
-	)
+	).Line()
 
 	f.Func().Params(jen.Id("p").Id("UnexportedFieldStruct")).Id("Values").Params().Index().Qual("reflect", "Value").BlockFunc(func(g *jen.Group) {
 		g.Var().Id("values").Index().Qual("reflect", "Value")
@@ -134,7 +134,7 @@ func genereateSlice(f *jen.File) {
 		g.Id("UnexportedFieldStruct").Index().Id("UnexportedFieldStruct")
 		g.Id("UnexportedFieldStructPtr").Index().Op("*").Id("UnexportedFieldStruct")
 
-	})
+	}).Line()
 
 	f.Func().Id("NewSlice").Params().Id("Slice").Block(
 		jen.Id("p").Op(":=").Id("NewPredeclared").Call(),
@@ -150,12 +150,12 @@ func genereateSlice(f *jen.File) {
 			}
 
 			d[jen.Id("MySlice")] = jen.Id("MySlice").Values(jen.Lit("myslice"))
-			d[jen.Id("Struct")] = jen.Id("p")
-			d[jen.Id("StructPtr")] = jen.Op("&").Id("p")
-			d[jen.Id("UnexportedFieldStruct")] = jen.Id("uep")
-			d[jen.Id("UnexportedFieldStructPtr")] = jen.Op("&").Id("uep")
+			d[jen.Id("Struct")] = jen.Index().Id("Predeclared").Values(jen.Id("p"))
+			d[jen.Id("StructPtr")] = jen.Index().Op("*").Id("Predeclared").Values(jen.Op("&").Id("p"))
+			d[jen.Id("UnexportedFieldStruct")] = jen.Index().Id("UnexportedFieldStruct").Values(jen.Id("uep"))
+			d[jen.Id("UnexportedFieldStructPtr")] = jen.Index().Op("*").Id("UnexportedFieldStruct").Values(jen.Op("&").Id("uep"))
 		}))),
-	)
+	).Line()
 
 	f.Func().Params(jen.Id("p").Id("Slice")).Id("Values").Params().Index().Qual("reflect", "Value").BlockFunc(func(g *jen.Group) {
 		g.Var().Id("values").Index().Qual("reflect", "Value")
@@ -198,7 +198,7 @@ func generateMap(f *jen.File) {
 		g.Id("StructPtr").Map(jen.String()).Op("*").Id("Predeclared")
 		g.Id("UnexportedFieldStruct").Map(jen.String()).Id("UnexportedFieldStruct")
 		g.Id("UnexportedFieldStructPtr").Map(jen.String()).Op("*").Id("UnexportedFieldStruct")
-	})
+	}).Line()
 
 	f.Func().Id("NewMap").Params().Id("Map").Block(
 		jen.Id("p").Op(":=").Id("NewPredeclared").Call(),
@@ -213,7 +213,7 @@ func generateMap(f *jen.File) {
 					jen.Id("p").Dot(cap): jen.Op("&").Id("p").Dot(cap),
 				})
 				d[jen.Id(myType(i))] = jen.Map(jen.Id(myType(i))).Id(myType(i)).Values(jen.Dict{
-					jen.Id("p").Dot(myType(i)): jen.Id("p").Dot(cap),
+					jen.Id("p").Dot(myType(i)): jen.Id("p").Dot(myType(i)),
 				})
 				d[jen.Id(myType(i)+"Ptr")] = jen.Map(jen.Id(myType(i))).Op("*").Id(myType(i)).Values(jen.Dict{
 					jen.Id("p").Dot(myType(i)): jen.Op("&").Id("p").Dot(myType(i)),
@@ -238,7 +238,7 @@ func generateMap(f *jen.File) {
 			})
 
 		}))),
-	)
+	).Line()
 
 	f.Func().Params(jen.Id("p").Id("Map")).Id("Values").Params().Index().Qual("reflect", "Value").BlockFunc(func(g *jen.Group) {
 		g.Var().Id("values").Index().Qual("reflect", "Value")
@@ -270,14 +270,14 @@ func genereateStruct(f *jen.File) {
 		g.Id("Struct").Id("Predeclared")
 		g.Id("StructPtr").Op("*").Id("Predeclared")
 		g.Id("UnexportedFieldStruct").Id("UnexportedFieldStruct")
-		g.Id("UnexportedFieldStructPtr").Op("*").Id("UnexportedFieldStructPtr")
+		g.Id("UnexportedFieldStructPtr").Op("*").Id("UnexportedFieldStruct")
 		g.Id("Anonymous").Struct(
 			jen.Id("String").String(),
 		)
 		g.Id("AnonymousPtr").Op("*").Struct(
 			jen.Id("String").String(),
 		)
-	})
+	}).Line()
 	f.Func().Id("NewStruct").Params().Id("Struct").Block(
 		jen.Id("p").Op(":=").Id("NewPredeclared").Call(),
 		jen.Id("uep").Op(":=").Id("NewUnexportedFieldStruct").Call(),
@@ -297,7 +297,7 @@ func genereateStruct(f *jen.File) {
 				jen.Id("String"): jen.Lit("string"),
 			})
 		}))),
-	)
+	).Line()
 
 	f.Func().Params(jen.Id("p").Id("Struct")).Id("Values").Params().Index().Qual("reflect", "Value").BlockFunc(func(g *jen.Group) {
 		g.Var().Id("values").Index().Qual("reflect", "Value")
