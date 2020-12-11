@@ -68,7 +68,8 @@ func TestTransform(t *testing.T) {
 			false,
 		},
 	}
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := Transform(tt.args.s, tt.args.from, tt.args.to)
 			if (err != nil) != tt.wantErr {
@@ -103,7 +104,8 @@ func TestEncode(t *testing.T) {
 			false,
 		},
 	}
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := Encode(tt.args.s, tt.args.to)
 			if (err != nil) != tt.wantErr {
@@ -138,7 +140,8 @@ func TestDecode(t *testing.T) {
 			false,
 		},
 	}
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := Decode(tt.args.s, tt.args.from)
 			if (err != nil) != tt.wantErr {

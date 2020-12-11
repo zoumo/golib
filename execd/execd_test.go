@@ -44,11 +44,9 @@ func init() {
 			i++
 		}
 	})
-
 }
 
 func TestRun(t *testing.T) {
-
 	if reexec.Init() {
 		os.Exit(0)
 	}
@@ -78,7 +76,6 @@ LOOP:
 
 	cmd.Stop()
 	time.Sleep(time.Second)
-
 }
 
 func TestStop(t *testing.T) {

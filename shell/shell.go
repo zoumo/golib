@@ -30,7 +30,6 @@ var (
 
 func shellCmdMutator(name string, args []string) (string, []string) {
 	return entrypoint, []string{"-c", strings.Join(append([]string{name}, args...), " ")}
-
 }
 
 // QueryEscape escapes the string so it can be safely placed

@@ -50,10 +50,7 @@ func HasUnexportedField(t reflect.Type) bool {
 
 // IsUnexportedField returns true if the structField is not exported.
 func IsUnexportedField(field reflect.StructField) bool {
-	if len(field.PkgPath) > 0 {
-		return true
-	}
-	return false
+	return len(field.PkgPath) > 0
 }
 
 // Hashable returns true if the type can used as map key

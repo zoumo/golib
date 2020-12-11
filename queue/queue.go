@@ -166,7 +166,7 @@ func (sq *Queue) handle(obj interface{}) bool {
 	// get queued again until another change happens.
 	sq.queue.Forget(obj)
 
-	klog.V(1).Info("Successfully handled obj %v", obj)
+	klog.V(1).Infof("Successfully handled obj %v", obj)
 
 	return true
 }

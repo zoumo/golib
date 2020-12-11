@@ -53,7 +53,6 @@ func init() {
 	for k, e := range alias {
 		all[strings.ToUpper(k)] = e
 	}
-
 }
 
 func extend(dest []encoding.Encoding, alls ...[]encoding.Encoding) []encoding.Encoding {
@@ -97,12 +96,12 @@ func Transform(s []byte, from, to string) ([]byte, error) {
 
 	fromEncoding, ok := all[from]
 	if !ok {
-		return nil, fmt.Errorf("Unsupported from encoding %v", from)
+		return nil, fmt.Errorf("unsupported from encoding %v", from)
 	}
 
 	toEncoding, ok := all[to]
 	if !ok {
-		return nil, fmt.Errorf("Unsupported to encoding %v", to)
+		return nil, fmt.Errorf("unsupported to encoding %v", to)
 	}
 
 	reader := transform.NewReader(bytes.NewBuffer(s), transform.Chain(fromEncoding.NewDecoder(), toEncoding.NewEncoder()))

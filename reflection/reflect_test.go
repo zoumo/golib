@@ -18,6 +18,7 @@ func TestPorterSuit(t *testing.T) {
 	ginkgo.RunSpecs(t, "Porter suit")
 }
 
+//nolint
 var (
 	Describe       = ginkgo.Describe
 	DescribeTable  = table.DescribeTable

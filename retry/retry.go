@@ -50,18 +50,21 @@ func Retry(backoff Backoff, condition func() error) error {
 // the error returned by condition is within the expected by continueOn function
 //
 // Deprecated: Use RetryContined
+// nolint
 func RetryOn(backoff Backoff, condition func() error, continueOn func(error) bool) error {
 	return retry(backoff, condition, nil, continueOn)
 }
 
 // RetryContined does the same thing with Retry() except that it will keep trying if
 // the error returned by condition is within the expected by continued function
+// nolint
 func RetryContined(backoff Backoff, condition func() error, continued func(error) bool) error {
 	return retry(backoff, condition, nil, continued)
 }
 
 // RetryIgnored does the same thing with Retry() but it will stop retrying when conidtion returns
 // an error which will be ignored if it is within the expected.
+// nolint
 func RetryIgnored(backoff Backoff, condition func() error, ignored func(error) bool) error {
 	return retry(backoff, condition, ignored, nil)
 }
@@ -71,7 +74,7 @@ func RetryIgnored(backoff Backoff, condition func() error, ignored func(error) b
 //
 // If the ignored function returns true, it will interrupte the retrying loop.
 //
-// If the conitnued fucntion returns true, retrying will keep going.
+// If the conitnued function returns true, retrying will keep going.
 //
 // If the retrying timeout, the last error of condition will be returned.
 func retry(backoff Backoff, condition func() error, ignored, continued func(error) bool) error {

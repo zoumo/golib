@@ -28,7 +28,6 @@ import (
 )
 
 func TestCommand(t *testing.T) {
-
 	tests := []struct {
 		name    string
 		argName string
@@ -42,7 +41,8 @@ func TestCommand(t *testing.T) {
 			&Cmd{argsHolder: &argsHolder{name: "echo", args: []string{"123"}}},
 		},
 	}
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			if got := Command(tt.argName, tt.args...); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Command() = %v, want %v", got, tt.want)
@@ -52,7 +52,6 @@ func TestCommand(t *testing.T) {
 }
 
 func TestCommandContext(t *testing.T) {
-
 	tests := []struct {
 		name    string
 		ctx     context.Context
@@ -68,7 +67,8 @@ func TestCommandContext(t *testing.T) {
 			&Cmd{ctx: context.TODO(), argsHolder: &argsHolder{name: "echo", args: []string{"123"}}},
 		},
 	}
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			if got := CommandContext(tt.ctx, tt.argName, tt.args...); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Command() = %v, want %v", got, tt.want)
@@ -86,7 +86,8 @@ func TestCmd_Command(t *testing.T) {
 		{"", Command("echo", "123"), exec.Command("echo", "123")},
 		{"", CommandContext(context.TODO(), "echo", "123"), exec.CommandContext(context.TODO(), "echo", "123")},
 	}
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.cmd.Command(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Cmd.Command() = %v, want %v", got, tt.want)
@@ -118,7 +119,8 @@ func TestCmd_Pipe(t *testing.T) {
 			&Cmd{ctx: context.TODO(), argsHolder: &argsHolder{name: "sort", args: []string{"test"}}, preCmd: CommandContext(context.TODO(), "echo", "123")},
 		},
 	}
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.cmd.Pipe(tt.pipeName, tt.pipeArgs...); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Cmd.Pipe() = %v, want %v", got, tt.want)
@@ -128,7 +130,6 @@ func TestCmd_Pipe(t *testing.T) {
 }
 
 func TestCmd_Run(t *testing.T) {
-
 	tests := []struct {
 		name    string
 		cmd     *Cmd
@@ -137,7 +138,8 @@ func TestCmd_Run(t *testing.T) {
 		{"", Command("echo", "123").Pipe("sort"), false},
 		{"", Command("echox", "123").Pipe("sort"), true},
 	}
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			if err := tt.cmd.Run(); (err != nil) != tt.wantErr {
 				t.Errorf("Cmd.Run() error = %v, wantErr %v", err, tt.wantErr)
@@ -159,7 +161,8 @@ func TestCmd_Output(t *testing.T) {
 		{"invalidOption", Command("echo", "2\n1").Pipe("sort", "-x"), nil, true},
 		{"lookuperr", Command("echox", "123").Pipe("sort"), nil, true},
 	}
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := tt.cmd.Output()
 			if (err != nil) != tt.wantErr {
@@ -186,7 +189,8 @@ func TestCmd_CombinedOutput(t *testing.T) {
 		{"invalidOption", Command("echo", "2\n1").Pipe("sort", "-x"), []byte("sort: invalid option -- 'x'\nTry 'sort --help' for more information."), true},
 		{"lookuperr", Command("echox", "123").Pipe("sort"), nil, true},
 	}
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := tt.cmd.CombinedOutput()
 			if (err != nil) != tt.wantErr {
@@ -215,7 +219,8 @@ func TestCmd_OutputClosure(t *testing.T) {
 		{"", Command("echo", "2\n1").Pipe("sort").OutputClosure(), []string{"-x"}, nil, true},
 	}
 
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := tt.cmd(tt.args...)
 			if (err != nil) != tt.wantErr {
@@ -263,7 +268,8 @@ func TestCmd_OutputClosureManyTimes(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			for _, f := range tt.fields {
 				got, err := tt.cmd(f.args...)
@@ -299,7 +305,8 @@ func TestCmd_CombinedOutputClosure(t *testing.T) {
 		{"invalidOption", Command("echo", "2\n1").Pipe("sort").CombinedOutputClosure(), []string{"-x"}, []byte("sort: invalid option -- 'x'\nTry 'sort --help' for more information."), true},
 	}
 
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := tt.cmd(tt.args...)
 			if (err != nil) != tt.wantErr {
@@ -346,7 +353,8 @@ func TestCmd_CombinedOutputClosureManyTimes(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			for _, f := range tt.fields {
 				got, err := tt.cmd(f.args...)
@@ -375,7 +383,8 @@ func TestCmd_SetStdin(t *testing.T) {
 	}{
 		{"", Command("sort"), bytes.NewBuffer([]byte("2\n1")), []byte("1\n2"), false},
 	}
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			tt.cmd.SetIO(tt.in, nil, nil)
 			got, err := tt.cmd.Output()
@@ -405,7 +414,8 @@ func TestCmd_SetStdout(t *testing.T) {
 		{"", Command("echo", "2\n1").Pipe("sort"), new(bytes.Buffer), []byte("1\n2"), false},
 		{"", Command("echo", "2\n1").Pipe("sort", "-x"), new(bytes.Buffer), nil, true},
 	}
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			tt.cmd.SetIO(nil, tt.out, nil)
 			got, err := tt.cmd.Output()
@@ -466,7 +476,8 @@ func TestCmd_SetStderr(t *testing.T) {
 			true,
 		},
 	}
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			tt.cmd.SetIO(nil, nil, tt.out)
 			got, err := tt.cmd.CombinedOutput()
@@ -550,7 +561,8 @@ func TestCmd_RunForever(t *testing.T) {
 			"probe failed: failed run forever",
 		},
 	}
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.cmd.RunForever(tt.startup)
 			if (err != nil) != tt.wantErr || (err != nil && err.Error() != tt.errString) {

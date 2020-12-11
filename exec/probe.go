@@ -74,7 +74,6 @@ func newWorker(
 }
 
 func (w *worker) run() chan error {
-
 	resultC := make(chan error)
 
 	go func() {
@@ -107,7 +106,6 @@ func (w *worker) run() chan error {
 }
 
 func (w *worker) doProbe() (keepGoing bool) {
-
 	if int(time.Since(w.startAt).Seconds()) < w.probe.InitialDelaySeconds {
 		return true
 	}

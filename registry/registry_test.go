@@ -35,7 +35,8 @@ func Test_registry_Register(t *testing.T) {
 		{"", args{"test", 1}, false},
 		{"", args{"test", 2}, true},
 	}
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			if err := r.Register(tt.args.name, tt.args.v); (err != nil) != tt.wantErr {
 				t.Errorf("registry.Register() error = %v, wantErr %v", err, tt.wantErr)
@@ -60,7 +61,8 @@ func Test_registry_Get(t *testing.T) {
 		{"", args{"test"}, 1, true},
 		{"", args{"test2"}, nil, false},
 	}
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			got, got1 := r.Get(tt.args.name)
 			if !reflect.DeepEqual(got, tt.want) {

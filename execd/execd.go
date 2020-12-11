@@ -201,7 +201,7 @@ func (c *D) SetGracefulShutDown(f func(*exec.Cmd) error) {
 // RunForever starts the specified command and waits for it to complete in another goroutine.
 // If there is no error, the daemon will run forever.
 //
-// In the meantime, It starts a goroutine to keep the backgroud process alive.
+// In the meantime, It starts a goroutine to keep the background process alive.
 // But if the error occurs more than `crashBackOff` times when command is starting,
 // it will stop tracking anymore.
 func (c *D) RunForever() error {
@@ -262,7 +262,6 @@ func (c *D) Stop() error {
 	}
 
 	return c.shutdown()
-
 }
 
 func (c *D) shutdown() error {
@@ -313,7 +312,7 @@ func (c *D) keepalive() {
 					if err != nil {
 						if restartErrTimes >= crashBackoff {
 							fmt.Printf("execd(%v): too many errors occur when restarting the process, stop the daemon\n", c.Name())
-							c.Stop()
+							c.Stop() //nolint:errcheck
 							return
 						}
 						fmt.Printf("execd(%v): error restart command: %v\n", c.Name(), err)
@@ -324,7 +323,6 @@ func (c *D) keepalive() {
 				return
 			}
 		}
-
 	}()
 }
 

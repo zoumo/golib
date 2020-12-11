@@ -83,17 +83,15 @@ func TestInterfaceSlice_Filter(t *testing.T) {
 			"",
 			ifaceCases,
 			func(iface Interface) bool {
-				if iface.Name == "lo" {
-					return true
-				}
-				return false
+				return iface.Name == "lo"
 			},
 			InterfaceSlice{
 				ifaceEth0,
 			},
 		},
 	}
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.ifaces.Filter(tt.filterFunc); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("InterfaceSlice.Filter() = %v, want %v", got, tt.want)
@@ -113,7 +111,8 @@ func TestInterfaceSlice_Get(t *testing.T) {
 		{"", ifaceCases, "eth0", &ifaceEth0},
 		{"", ifaceCases, "xxx", nil},
 	}
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			got := tt.ifaces.Get(tt.iface)
 			if !reflect.DeepEqual(got, tt.want) {
@@ -133,7 +132,8 @@ func TestInterfaceSlice_Contains(t *testing.T) {
 		{"", ifaceCases, "lo", true},
 		{"", ifaceCases, "xxx", false},
 	}
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.ifaces.Contains(tt.iface); got != tt.want {
 				t.Errorf("InterfaceSlice.Contains() = %v, want %v", got, tt.want)
@@ -151,7 +151,8 @@ func TestInterfaceSlice_One(t *testing.T) {
 		{"", ifaceCases, &ifaceLo},
 		{"", nil, nil},
 	}
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.ifaces.One(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("InterfaceSlice.One() = %v, want %v", got, tt.want)
@@ -170,7 +171,8 @@ func TestAddr_IsIPv4(t *testing.T) {
 		{"", Addr{&net.IPNet{IP: []byte{1, 1, 1, 1}}}, true},
 		{"", Addr{&net.IPNet{IP: []byte{1, 1, 1, 1, 1}}}, false},
 	}
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.addr.IsIPv4(); got != tt.want {
 				t.Errorf("Addr.IsIPv4() = %v, want %v", got, tt.want)
@@ -189,7 +191,8 @@ func TestAddr_IsIPv6(t *testing.T) {
 		{"", Addr{&net.IPNet{IP: net.ParseIP("fe80::1ba8:6946:ab33:da50")}}, true},
 		{"", Addr{&net.IPNet{IP: []byte{1, 1, 1, 1, 1}}}, false},
 	}
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.addr.IsIPv6(); got != tt.want {
 				t.Errorf("Addr.IsIPv6() = %v, want %v", got, tt.want)

@@ -33,7 +33,7 @@ func NewECDSAPrivateKey(curve string) (*ecdsa.PrivateKey, error) {
 	case "P521":
 		priv, err = ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
 	default:
-		return nil, fmt.Errorf("Unrecognized elliptic curve: %q", curve)
+		return nil, fmt.Errorf("unrecognized elliptic curve: %q", curve)
 	}
 	if err != nil {
 		return nil, err

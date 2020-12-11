@@ -310,5 +310,4 @@ func TestHeap_PeekSecond(t *testing.T) {
 	if e, a := 1, second.(testHeapObject).val.(int); a != e {
 		t.Fatalf("expected %d, got %d", e, a)
 	}
-
 }
