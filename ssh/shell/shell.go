@@ -8,7 +8,7 @@ import (
 	"syscall"
 
 	"golang.org/x/crypto/ssh"
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 )
 
 type Shell struct {
@@ -42,13 +42,13 @@ func (s *Shell) Run(stdin io.Reader, stdout, stderr io.Writer) error {
 
 func (s *Shell) runShell(session *ssh.Session) error {
 	fd := int(os.Stdin.Fd())
-	state, err := terminal.MakeRaw(fd)
+	state, err := term.MakeRaw(fd)
 	if err != nil {
 		return fmt.Errorf("failed to make raw terminal: %v", err)
 	}
-	defer terminal.Restore(fd, state) //nolint
+	defer term.Restore(fd, state) //nolint
 
-	termWidth, termHeight, err := terminal.GetSize(fd)
+	termWidth, termHeight, err := term.GetSize(fd)
 	if err != nil {
 		return err
 	}
@@ -83,7 +83,7 @@ func (s *Shell) runShell(session *ssh.Session) error {
 func (s *Shell) syncWindowChange(fd int, session *ssh.Session) {
 	signalCh := make(chan os.Signal, 1)
 	signal.Notify(signalCh, syscall.SIGWINCH)
-	width, height, err := terminal.GetSize(fd)
+	width, height, err := term.GetSize(fd)
 	if err != nil {
 		// TODO:
 		return
@@ -93,7 +93,7 @@ func (s *Shell) syncWindowChange(fd int, session *ssh.Session) {
 		if sig == nil {
 			return
 		}
-		curWidth, curHeight, _ := terminal.GetSize(fd)
+		curWidth, curHeight, _ := term.GetSize(fd)
 
 		if curWidth == width && curHeight == height {
 			continue
