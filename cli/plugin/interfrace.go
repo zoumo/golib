@@ -1,4 +1,4 @@
-package cliplugin
+package plugin
 
 import (
 	"github.com/spf13/cobra"
