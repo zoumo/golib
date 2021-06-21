@@ -15,6 +15,7 @@ import (
 	"github.com/jcmturner/gokrb5/v8/messages"
 	"github.com/jcmturner/gokrb5/v8/spnego"
 	"github.com/jcmturner/gokrb5/v8/types"
+	"github.com/pkg/errors"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -50,11 +51,11 @@ func NewGSSAPIClientWithPassword(krb5confPath, username, realm, password string)
 func newGSSAPIClient(client *client.Client) (ssh.GSSAPIClient, error) {
 	err := client.Login()
 	if err != nil {
-		return nil, fmt.Errorf("failed to login kerberos: %v", err)
+		return nil, errors.Wrap(err, "failed to login kerberos")
 	}
 	err = client.AffirmLogin()
 	if err != nil {
-		return nil, fmt.Errorf("failed to affirmLogin kerberos: %v", err)
+		return nil, errors.Wrap(err, "failed to affirmLogin kerberos")
 	}
 
 	return &GSSAPIClient{
@@ -99,7 +100,7 @@ func (k *GSSAPIClient) InitSecContext(target string, token []byte, isGSSDelegCre
 
 		tkt, sKey, err := k.client.GetServiceTicket(newTarget)
 		if err != nil {
-			return nil, false, fmt.Errorf("failed to get service ticket: %v", err)
+			return nil, false, errors.Wrap(err, "failed to get service ticket")
 		}
 
 		krb5Token, err := spnego.NewKRB5TokenAPREQ(k.client, tkt, sKey, GSSAPIFlags, APOptions) //nolint
@@ -107,7 +108,7 @@ func (k *GSSAPIClient) InitSecContext(target string, token []byte, isGSSDelegCre
 		creds := k.client.Credentials
 		auth, err := types.NewAuthenticator(creds.Domain(), creds.CName())
 		if err != nil {
-			return nil, false, fmt.Errorf("failed to generate new authenticator: %v", err)
+			return nil, false, errors.Wrap(err, "failed to generate new authenticator")
 		}
 		auth.Cksum = types.Checksum{
 			CksumType: chksumtype.GSSAPI,
@@ -115,13 +116,13 @@ func (k *GSSAPIClient) InitSecContext(target string, token []byte, isGSSDelegCre
 		}
 		etype, _ := crypto.GetEtype(sKey.KeyType)
 		if err := auth.GenerateSeqNumberAndSubKey(sKey.KeyType, etype.GetKeyByteSize()); err != nil {
-			return nil, false, fmt.Errorf("failed to generate seq number and sub key: %v", err)
+			return nil, false, errors.Wrap(err, "failed to generate seq number and sub key")
 		}
 		k.subkey = auth.SubKey
 
 		apReq, err := messages.NewAPReq(tkt, sKey, auth)
 		if err != nil {
-			return nil, false, fmt.Errorf("failed to create NewAPReq: %v", err)
+			return nil, false, errors.Wrap(err, "failed to create NewAPReq")
 		}
 		for _, o := range APOptions {
 			types.SetFlag(&apReq.APOptions, o)
@@ -130,14 +131,14 @@ func (k *GSSAPIClient) InitSecContext(target string, token []byte, isGSSDelegCre
 
 		outToken, err := krb5Token.Marshal()
 		if err != nil {
-			return nil, false, fmt.Errorf("failed to marshal krb5 token: %v", err)
+			return nil, false, errors.Wrap(err, "failed to marshal krb5 token")
 		}
 		return outToken, true, nil
 	}
 
 	var krb5Token spnego.KRB5Token
 	if err := krb5Token.Unmarshal(token); err != nil {
-		err := fmt.Errorf("unmarshal APRep token failed: %w", err)
+		err := errors.Wrap(err, "unmarshal APRep token failed")
 		return nil, false, err
 	}
 	if krb5Token.IsKRBError() {

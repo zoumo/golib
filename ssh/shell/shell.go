@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/pkg/errors"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/term"
 )
@@ -44,7 +45,7 @@ func (s *Shell) runShell(session *ssh.Session) error {
 	fd := int(os.Stdin.Fd())
 	state, err := term.MakeRaw(fd)
 	if err != nil {
-		return fmt.Errorf("failed to make raw terminal: %v", err)
+		return errors.Wrap(err, "failed to make raw terminal")
 	}
 	defer term.Restore(fd, state) //nolint
 

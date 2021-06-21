@@ -1,21 +1,20 @@
 package krb5
 
 import (
-	"fmt"
-
 	"github.com/jcmturner/gokrb5/v8/credentials"
+	"github.com/pkg/errors"
 )
 
 func GetDefaultPrinciplaNameFromCCache(ccache string) (string, error) {
 	if ccache == "" {
-		return "", fmt.Errorf("invalid ccache file path")
+		return "", errors.New("invalid ccache file path")
 	}
 	c, err := credentials.LoadCCache(ccache)
 	if err != nil {
-		return "", fmt.Errorf("failed to load kerberos ccache: %v", err)
+		return "", errors.Wrap(err, "failed to load kerberos ccache")
 	}
 	if len(c.DefaultPrincipal.PrincipalName.NameString) == 0 {
-		return "", fmt.Errorf("empty principalName")
+		return "", errors.New("empty principalName")
 	}
 	return c.DefaultPrincipal.PrincipalName.NameString[0], nil
 }

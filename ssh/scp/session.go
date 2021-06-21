@@ -154,7 +154,7 @@ func (s *session) Walk(location string, handler walkFn) error {
 
 	err := s.init(location)
 	if err != nil {
-		return fmt.Errorf("failed to init session: %v", err)
+		return errors.Wrap(err, "failed to init session")
 	}
 
 	now := time.Now()
