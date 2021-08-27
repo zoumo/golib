@@ -25,13 +25,24 @@ import (
 	"k8s.io/klog"
 )
 
-type HandleResult struct {
-	// Requeue tells the Controller to requeue the reconcile key.  Defaults to false.
-	Requeue bool
+const (
+	ErrRetryForever = -1
+	ErrRetryNone    = 0
+)
 
-	// RequeueAfter if greater than 0, tells the Controller to requeue the reconcile key after the Duration.
-	// Implies that Requeue is true, there is no need to set Requeue to true at the same time as RequeueAfter.
+type HandleResult struct {
+	// RequeueRateLimited re-enqueue the object after the rate limiter says it's ok. Defaults to false.
+	RequeueRateLimited bool
+
+	// RequeueImmediately tells the Queue to requeue the object immediately. Defaults to false.
+	RequeueImmediately bool
+
+	// RequeueAfter tells the Queue to re-enqueue the object after the Duration if it is greater than 0.
 	RequeueAfter time.Duration
+
+	// MaxRequeueTimes tells the Queue the limit count of requeueing object. Defaults to 1.
+	// If you want to requeue forever, please use set it to MaxErrRetryForever
+	MaxRequeueTimes int
 }
 
 type Handler func(obj interface{}) (HandleResult, error)
@@ -46,94 +57,108 @@ type Queue struct {
 	handler Handler
 
 	// queue is the work queue the worker polls
-	queue workqueue.RateLimitingInterface
+	queue            workqueue.RateLimitingInterface
+	queueRateLimiter workqueue.RateLimiter
 
 	waitGroup sync.WaitGroup
+
+	maxErrRetries int
 
 	stopCh chan struct{}
 }
 
 // NewQueue returns a new Queue
 func NewQueue(handler Handler) *Queue {
+	rateLimiter := workqueue.DefaultControllerRateLimiter()
 	return &Queue{
-		queue:     workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
-		handler:   handler,
-		waitGroup: sync.WaitGroup{},
-		stopCh:    make(chan struct{}),
+		queue:            workqueue.NewRateLimitingQueue(rateLimiter),
+		queueRateLimiter: rateLimiter,
+		handler:          handler,
+		waitGroup:        sync.WaitGroup{},
+		stopCh:           make(chan struct{}),
 	}
 }
 
 // Run starts n workers to sync
-func (sq *Queue) Run(workers int) {
+func (q *Queue) Run(workers int) {
 	for i := 0; i < workers; i++ {
-		go wait.Until(sq.worker, time.Second, sq.stopCh)
+		go wait.Until(q.worker, time.Second, q.stopCh)
 	}
+}
+
+// SetMaxRetries sets the max retry times of the queue
+func (q *Queue) SetMaxErrRetries(max int) *Queue {
+	if max >= -1 {
+		q.maxErrRetries = max
+	}
+
+	return q
 }
 
 // Len returns the unprocessed item length
-func (sq *Queue) Len() int {
-	return sq.queue.Len()
+func (q *Queue) Len() int {
+	return q.queue.Len()
 }
 
 // ShutDown shuts down the work queue and waits for the worker to ACK
-func (sq *Queue) ShutDown() {
-	close(sq.stopCh)
+func (q *Queue) ShutDown() {
+	close(q.stopCh)
 
-	// sq shutdown the queue, then worker can't get key from queue
+	// q shutdown the queue, then worker can't get key from queue
 	// processNextWorkItem return false, and then waitGroup -1
-	sq.queue.ShutDown()
-	sq.waitGroup.Wait()
+	q.queue.ShutDown()
+	q.waitGroup.Wait()
 }
 
 // IsShuttingDown returns if the method Shutdown was invoked
-func (sq *Queue) IsShuttingDown() bool {
-	return sq.queue.ShuttingDown()
+func (q *Queue) IsShuttingDown() bool {
+	return q.queue.ShuttingDown()
 }
 
 // Queue returns the rate limit work queue
-func (sq *Queue) Queue() workqueue.RateLimitingInterface {
-	return sq.queue
+func (q *Queue) Queue() workqueue.RateLimitingInterface {
+	return q.queue
 }
 
 // Enqueue wraps queue.Add
-func (sq *Queue) Enqueue(obj interface{}) {
-	if sq.IsShuttingDown() {
+func (q *Queue) Enqueue(obj interface{}) {
+	if q.IsShuttingDown() {
 		return
 	}
-	sq.queue.Add(obj)
+	q.queue.Add(obj)
 }
 
 // EnqueueRateLimited wraps queue.AddRateLimited. It adds an item to the workqueue
 // after the rate limiter says its ok
-func (sq *Queue) EnqueueRateLimited(obj interface{}) {
-	if sq.IsShuttingDown() {
+func (q *Queue) EnqueueRateLimited(obj interface{}) {
+	if q.IsShuttingDown() {
 		return
 	}
-	sq.queue.AddRateLimited(obj)
+	q.queue.AddRateLimited(obj)
 }
 
 // EnqueueAfter wraps queue.AddAfter. It adds an item to the workqueue after the indicated duration has passed
-func (sq *Queue) EnqueueAfter(obj interface{}, after time.Duration) {
-	if sq.IsShuttingDown() {
+func (q *Queue) EnqueueAfter(obj interface{}, after time.Duration) {
+	if q.IsShuttingDown() {
 		return
 	}
-	sq.queue.AddAfter(obj, after)
+	q.queue.AddAfter(obj, after)
 }
 
 // Worker is a common worker for controllers
 // worker runs a work thread that just dequeues items, processes them, and marks them done.
 // It enforces that the Handler is never invoked concurrently with the same key.
-func (sq *Queue) worker() {
-	sq.waitGroup.Add(1)
-	defer sq.waitGroup.Done()
+func (q *Queue) worker() {
+	q.waitGroup.Add(1)
+	defer q.waitGroup.Done()
 	// invoked oncely and process any until exhausted
-	for sq.processNextWorkItem() {
+	for q.processNextWorkItem() {
 	}
 }
 
 // ProcessNextWorkItem processes next item in queue by Handler
-func (sq *Queue) processNextWorkItem() bool {
-	obj, quit := sq.queue.Get()
+func (q *Queue) processNextWorkItem() bool {
+	obj, quit := q.queue.Get()
 	if quit {
 		return false
 	}
@@ -144,29 +169,69 @@ func (sq *Queue) processNextWorkItem() bool {
 	// not call Forget if a transient error occurs, instead the item is
 	// put back on the workqueue and attempted again after a back-off
 	// period.
-	defer sq.queue.Done(obj)
+	defer q.queue.Done(obj)
 
-	return sq.handle(obj)
+	return q.handle(obj)
 }
 
-func (sq *Queue) handle(obj interface{}) bool {
-	result, err := sq.handler(obj)
+func (q *Queue) handle(obj interface{}) bool {
+	result, err := q.handler(obj)
 	if err != nil {
-		klog.Warningf("Error handling obj %v retry: %v, err: %v", obj, sq.queue.NumRequeues(obj), err)
+		q.handleError(obj, err)
 		return false
-	} else if result.RequeueAfter > 0 {
-		sq.queue.Forget(obj)
-		sq.queue.AddAfter(obj, result.RequeueAfter)
-		return true
-	} else if result.Requeue {
-		sq.queue.AddRateLimited(obj)
-		return true
 	}
-	// Finally, if no error occurs we Forget this item so it does not
-	// get queued again until another change happens.
-	sq.queue.Forget(obj)
 
-	klog.V(1).Infof("Successfully handled obj %v", obj)
-
+	q.handleRequeue(obj, result)
 	return true
+}
+
+func (q *Queue) handleError(obj interface{}, err error) {
+	if err == nil {
+		return
+	}
+	if q.maxErrRetries == ErrRetryForever ||
+		(q.maxErrRetries != ErrRetryNone && q.queue.NumRequeues(obj) < q.maxErrRetries) {
+		klog.Warningf("Error handling obj %v retry: %v, err: %v", obj, q.queue.NumRequeues(obj), err)
+		q.queue.AddRateLimited(obj)
+		return
+	}
+	q.queue.Forget(obj)
+}
+
+func (q *Queue) handleRequeue(obj interface{}, result HandleResult) {
+	var requeueAfter time.Duration
+
+	if result.MaxRequeueTimes == 0 {
+		// 0 means only requeue this time, fix to 1
+		result.MaxRequeueTimes = 1
+	}
+
+	// let requeueAfter > 0 means we need requeue it
+	if result.RequeueAfter > 0 {
+		requeueAfter = result.RequeueAfter
+	} else if result.RequeueImmediately {
+		requeueAfter = time.Millisecond
+	} else if result.RequeueRateLimited {
+		requeueAfter = time.Microsecond
+	}
+
+	if result.MaxRequeueTimes > 0 && q.queue.NumRequeues(obj) >= result.MaxRequeueTimes {
+		// more than maximum requeue times
+		// skip requeue
+		requeueAfter = 0
+	}
+
+	if requeueAfter > 0 {
+		if result.RequeueRateLimited {
+			q.EnqueueRateLimited(obj)
+		} else {
+			// EnqueueAfter does not record object requeues times, we need to
+			// call rateLimiter.When to add 1 time explicitly.
+			q.queueRateLimiter.When(obj)
+			q.EnqueueAfter(obj, requeueAfter)
+		}
+		return
+	}
+	// we should forget this obj if there is no need to requeue this obj
+	q.queue.Forget(obj)
 }
