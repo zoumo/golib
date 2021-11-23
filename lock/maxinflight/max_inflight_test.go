@@ -10,7 +10,7 @@ import (
 func TestMaxInfligthLock_TryAcquire(t *testing.T) {
 	tests := []struct {
 		name         string
-		lock         MaxInFlgithLockType
+		lock         LockType
 		max          uint32
 		acquireTimes uint32
 		want         uint32

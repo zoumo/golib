@@ -15,19 +15,19 @@ type Lock interface {
 	Resize(n uint32)
 }
 
-type MaxInFlgithLockType string
+type LockType string
 
 const (
-	Atomic  MaxInFlgithLockType = "atomic"
-	Channel MaxInFlgithLockType = "channel"
-	Mutex   MaxInFlgithLockType = "mutex"
+	Atomic  LockType = "atomic"
+	Channel LockType = "channel"
+	Mutex   LockType = "mutex"
 )
 
 func New(size uint32) Lock {
 	return newLock(Atomic, size)
 }
 
-func newLock(t MaxInFlgithLockType, size uint32) Lock {
+func newLock(t LockType, size uint32) Lock {
 	switch t {
 	case Atomic:
 		return newAtomic(size)
@@ -81,10 +81,9 @@ func (f *atomicLock) Release() {
 }
 
 func (f *atomicLock) Resize(n uint32) {
-	if n == 0 {
-		return
+	if f.max != n {
+		atomic.StoreUint32(&f.max, n)
 	}
-	atomic.StoreUint32(&f.max, n)
 }
 
 type channelLock struct {
@@ -118,7 +117,7 @@ func (l *channelLock) Resize(n uint32) {
 }
 
 type mutexLock struct {
-	count uint32
+	count int64
 	max   uint32
 	m     sync.Mutex
 }
@@ -130,13 +129,14 @@ func newMutexLock(n uint32) *mutexLock {
 }
 
 func (f *mutexLock) TryAcquire() bool {
-	if f.count >= f.max {
+	if f.count >= int64(f.max) {
 		return false
 	}
 
 	f.m.Lock()
 	defer f.m.Unlock()
-	if f.count >= f.max {
+
+	if f.count >= int64(f.max) {
 		return false
 	}
 
@@ -152,13 +152,22 @@ func (f *mutexLock) Release() {
 	f.m.Lock()
 	defer f.m.Unlock()
 
+	if f.count == 0 {
+		return
+	}
+
 	f.count--
 }
 
 func (f *mutexLock) Resize(n uint32) {
+	if f.max == n {
+		return
+	}
+
+	f.m.Lock()
+	defer f.m.Unlock()
+
 	if f.max != n {
-		f.m.Lock()
-		defer f.m.Unlock()
 		f.max = n
 	}
 }
