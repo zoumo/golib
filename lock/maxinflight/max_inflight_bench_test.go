@@ -4,22 +4,22 @@ import (
 	"testing"
 )
 
-func BenchmarkMaxInflightLock_Channel(b *testing.B) {
-	l := newChannelLock(uint32(b.N / 2))
-	benchmarkMaxInFlightLock_TryAcquire(l, b)
+func BenchmarkMaxInflight_Channel(b *testing.B) {
+	l := newChannel(uint32(b.N / 2))
+	benchmarkMaxInFlight_TryAcquire(l, b)
 }
 
-func BenchmarkMaxInflightLock_Atomic(b *testing.B) {
+func BenchmarkMaxInflight_Atomic(b *testing.B) {
 	l := newAtomic(uint32(b.N / 2))
-	benchmarkMaxInFlightLock_TryAcquire(l, b)
+	benchmarkMaxInFlight_TryAcquire(l, b)
 }
 
-func BenchmarkMaxInflightLock_Mutex(b *testing.B) {
-	l := newMutexLock(uint32(b.N / 2))
-	benchmarkMaxInFlightLock_TryAcquire(l, b)
+func BenchmarkMaxInflight_Mutex(b *testing.B) {
+	l := newMutex(uint32(b.N / 2))
+	benchmarkMaxInFlight_TryAcquire(l, b)
 }
 
-func benchmarkMaxInFlightLock_TryAcquire(l Lock, b *testing.B) {
+func benchmarkMaxInFlight_TryAcquire(l TokenBucket, b *testing.B) {
 	b.RunParallel(func(p *testing.PB) {
 		for p.Next() {
 			l.TryAcquire()

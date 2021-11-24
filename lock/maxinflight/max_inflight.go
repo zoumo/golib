@@ -5,7 +5,11 @@ import (
 	"sync/atomic"
 )
 
-type Lock interface {
+var (
+	InfinityTokenBucket = NewInfinity()
+)
+
+type TokenBucket interface {
 	// TryAccept returns true if a token is taken immediately. Otherwise,
 	// it returns false.
 	TryAcquire() bool
@@ -15,44 +19,68 @@ type Lock interface {
 	Resize(n uint32)
 }
 
-type LockType string
+type TokenBucketType string
 
 const (
-	Atomic  LockType = "atomic"
-	Channel LockType = "channel"
-	Mutex   LockType = "mutex"
+	Atomic   TokenBucketType = "atomic"
+	Channel  TokenBucketType = "channel"
+	Mutex    TokenBucketType = "mutex"
+	Infinity TokenBucketType = "infinity"
 )
 
-func New(size uint32) Lock {
-	return newLock(Atomic, size)
+func New(size uint32) TokenBucket {
+	return newBucket(Atomic, size)
 }
 
-func newLock(t LockType, size uint32) Lock {
+func NewInfinity() TokenBucket {
+	return &infinity{}
+}
+
+func newBucket(t TokenBucketType, size uint32) TokenBucket {
 	switch t {
 	case Atomic:
 		return newAtomic(size)
 	case Channel:
-		return newChannelLock(size)
+		return newChannel(size)
 	case Mutex:
-		return newMutexLock(size)
+		return newMutex(size)
+	case Infinity:
+		return NewInfinity()
 	}
 	return nil
 }
 
+// Infinity is a special lock, it always return true when
+// you try to acquire one token
+type infinity struct {
+}
+
+func (*infinity) TryAcquire() bool {
+	return true
+}
+
+// Release add a token back to the lock
+func (*infinity) Release() {
+}
+
+// Resize changes the max in flight lock's capacity
+func (*infinity) Resize(n uint32) {
+}
+
 // use a larger range of values than max to avoid overflow when increacing count
-type atomicLock struct {
+type atomicTokenBucket struct {
 	max   uint32 // range of 0 ~ 4,294,967,295
 	count int64  // range of -9,223,372,036,854,775,808 ~ 9,223,372,036,854,775,807
 }
 
-func newAtomic(n uint32) *atomicLock {
-	return &atomicLock{
+func newAtomic(n uint32) *atomicTokenBucket {
+	return &atomicTokenBucket{
 		max:   n,
 		count: 0,
 	}
 }
 
-func (f *atomicLock) TryAcquire() bool {
+func (f *atomicTokenBucket) TryAcquire() bool {
 	count := atomic.LoadInt64(&f.count)
 	max := int64(atomic.LoadUint32(&f.max))
 	if count < 0 {
@@ -73,30 +101,30 @@ func (f *atomicLock) TryAcquire() bool {
 	return true
 }
 
-func (f *atomicLock) Release() {
+func (f *atomicTokenBucket) Release() {
 	count := atomic.AddInt64(&f.count, -1)
 	if count < 0 {
 		atomic.StoreInt64(&f.count, 0)
 	}
 }
 
-func (f *atomicLock) Resize(n uint32) {
+func (f *atomicTokenBucket) Resize(n uint32) {
 	if f.max != n {
 		atomic.StoreUint32(&f.max, n)
 	}
 }
 
-type channelLock struct {
+type channelTokenBucket struct {
 	ch chan bool
 }
 
-func newChannelLock(n uint32) *channelLock {
-	return &channelLock{
+func newChannel(n uint32) *channelTokenBucket {
+	return &channelTokenBucket{
 		ch: make(chan bool, n),
 	}
 }
 
-func (l *channelLock) TryAcquire() bool {
+func (l *channelTokenBucket) TryAcquire() bool {
 	select {
 	case l.ch <- true:
 		return true
@@ -105,30 +133,30 @@ func (l *channelLock) TryAcquire() bool {
 	}
 }
 
-func (l *channelLock) Release() {
+func (l *channelTokenBucket) Release() {
 	select {
 	case <-l.ch:
 	default:
 	}
 }
 
-func (l *channelLock) Resize(n uint32) {
+func (l *channelTokenBucket) Resize(n uint32) {
 	// not implement
 }
 
-type mutexLock struct {
+type mutexTokenBucket struct {
 	count int64
 	max   uint32
 	m     sync.Mutex
 }
 
-func newMutexLock(n uint32) *mutexLock {
-	return &mutexLock{
+func newMutex(n uint32) *mutexTokenBucket {
+	return &mutexTokenBucket{
 		max: n,
 	}
 }
 
-func (f *mutexLock) TryAcquire() bool {
+func (f *mutexTokenBucket) TryAcquire() bool {
 	if f.count >= int64(f.max) {
 		return false
 	}
@@ -144,7 +172,7 @@ func (f *mutexLock) TryAcquire() bool {
 	return true
 }
 
-func (f *mutexLock) Release() {
+func (f *mutexTokenBucket) Release() {
 	if f.count == 0 {
 		return
 	}
@@ -159,7 +187,7 @@ func (f *mutexLock) Release() {
 	f.count--
 }
 
-func (f *mutexLock) Resize(n uint32) {
+func (f *mutexTokenBucket) Resize(n uint32) {
 	if f.max == n {
 		return
 	}

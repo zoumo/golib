@@ -7,14 +7,21 @@ import (
 	"testing"
 )
 
-func TestMaxInfligthLock_TryAcquire(t *testing.T) {
+func TestMaxInflight_TryAcquire(t *testing.T) {
 	tests := []struct {
 		name         string
-		lock         LockType
+		lock         TokenBucketType
 		max          uint32
 		acquireTimes uint32
 		want         uint32
 	}{
+		{
+			"",
+			Infinity,
+			1000000,
+			2000000,
+			2000000,
+		},
 		{
 			"",
 			Atomic,
@@ -47,7 +54,7 @@ func TestMaxInfligthLock_TryAcquire(t *testing.T) {
 	for i := range tests {
 		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
-			l := newLock(tt.lock, tt.max)
+			l := newBucket(tt.lock, tt.max)
 			g := sync.WaitGroup{}
 
 			g.Add(int(tt.acquireTimes))
@@ -70,7 +77,7 @@ func TestMaxInfligthLock_TryAcquire(t *testing.T) {
 
 func Test_atomicLock_TryAcquire(t *testing.T) {
 	want := uint32(10)
-	lock := &atomicLock{
+	lock := &atomicTokenBucket{
 		count: int64(math.MaxUint32 - want),
 		max:   math.MaxUint32,
 	}
