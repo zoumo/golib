@@ -102,6 +102,9 @@ func (f *atomicTokenBucket) TryAcquire() bool {
 }
 
 func (f *atomicTokenBucket) Release() {
+	if f.count <= 0 {
+		return
+	}
 	count := atomic.AddInt64(&f.count, -1)
 	if count < 0 {
 		atomic.StoreInt64(&f.count, 0)

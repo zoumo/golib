@@ -25,6 +25,13 @@ func TestMaxInflight_TryAcquire(t *testing.T) {
 		{
 			"",
 			Atomic,
+			0,
+			2000000,
+			0,
+		},
+		{
+			"",
+			Atomic,
 			1000000,
 			2000000,
 			1000000,
@@ -39,9 +46,23 @@ func TestMaxInflight_TryAcquire(t *testing.T) {
 		{
 			"",
 			Channel,
+			0,
+			20000,
+			0,
+		},
+		{
+			"",
+			Channel,
 			10000,
 			20000,
 			10000,
+		},
+		{
+			"",
+			Mutex,
+			0,
+			20000,
+			0,
 		},
 		{
 			"",
