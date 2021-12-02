@@ -237,7 +237,7 @@ func newSelfSignedCertificateBytes(cfg Options, key crypto.Signer, isCA bool) ([
 			Organization: cfg.Organization,
 		},
 		NotBefore:             now.UTC(),
-		NotAfter:              now.Add(oneYear * 10).UTC(),
+		NotAfter:              now.Add(oneYear * 100).UTC(),
 		IPAddresses:           cfg.IPs,
 		DNSNames:              cfg.DNSNames,
 		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
