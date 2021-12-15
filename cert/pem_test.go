@@ -48,23 +48,39 @@ func Test_parsePEM(t *testing.T) {
 	tests := []struct {
 		name   string
 		filter func(block *pem.Block) bool
+		first  bool
 		want   int
 	}{
 		{
 			"filter key",
 			privateKeyFilter,
+			false,
+			2,
+		},
+		{
+			"filter first key",
+			privateKeyFilter,
+			true,
+			1,
+		},
+		{
+			"filter cert",
+			certsFilter,
+			false,
 			2,
 		},
 		{
 			"filter cert",
 			certsFilter,
-			2,
+			true,
+			1,
 		},
 		{
 			"filter rsa key",
 			func(block *pem.Block) bool {
 				return block.Type == RASPrivateKeyPEMBlockType
 			},
+			false,
 			1,
 		},
 		{
@@ -72,13 +88,14 @@ func Test_parsePEM(t *testing.T) {
 			func(block *pem.Block) bool {
 				return block.Type == ECDSAPrivateKeyPEMBlockType
 			},
+			false,
 			1,
 		},
 	}
 	for i := range tests {
 		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
-			if got := parsePEM(pemBytes, false, tt.filter); len(got) != tt.want {
+			if got := parsePEM(pemBytes, tt.first, tt.filter); len(got) != tt.want {
 				t.Errorf("parsePEM() = %v, want %v", len(got), tt.want)
 			}
 		})

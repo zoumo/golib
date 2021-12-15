@@ -140,7 +140,20 @@ func ParsePrivateKeyPEM(pemBytes []byte) (crypto.Signer, error) {
 	return ParsePrivateKey(pems[0].Block.Bytes)
 }
 
-// ParsePrivateKeyPEM decode all valid certificate pem blocks to x509 certificates
+// ParseCertPEM decode first valid certificate pem blocks to x509 certificate
+func ParseCertPEM(pemBytes []byte) (*x509.Certificate, error) {
+	pems := parsePEM(pemBytes, true, certsFilter)
+	if len(pems) == 0 {
+		return nil, errors.New("data does not contain any valid RSA or ECDSA certificates")
+	}
+	cert, err := x509.ParseCertificate(pems[0].Block.Bytes)
+	if err != nil {
+		return nil, err
+	}
+	return cert, nil
+}
+
+// ParseCertsPEM decode all valid certificate pem blocks to x509 certificates
 func ParseCertsPEM(pemBytes []byte) ([]*x509.Certificate, error) {
 	pems := parsePEM(pemBytes, false, certsFilter)
 	if len(pems) == 0 {
