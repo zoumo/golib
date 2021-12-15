@@ -73,7 +73,7 @@ func X509KeyPairWithPassword(certPEMBlock, keyPEMBlock []byte, passwd string) (*
 	if err != nil {
 		return nil, err
 	}
-	cert, err := tls.X509KeyPair(certPEMBlock, keyPEM.Raw)
+	cert, err := tls.X509KeyPair(certPEMBlock, keyPEM.EncodeToMemory())
 	if err != nil {
 		return nil, err
 	}

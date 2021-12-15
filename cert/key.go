@@ -67,7 +67,7 @@ func ParsePrivateKey(der []byte) (crypto.Signer, error) {
 
 // DecryptPrivateKeyFile takes a password encrypted key file and the password
 //  used to encrypt it and returns a slice of decrypted DER encoded bytes.
-func DecryptPrivateKeyFile(keyFile, passwd string) (*PEM, error) {
+func DecryptPrivateKeyFile(keyFile, passwd string) (*PEMBlock, error) {
 	keyPEMBlock, err := ioutil.ReadFile(keyFile)
 	if err != nil {
 		return nil, err
@@ -83,7 +83,7 @@ func DecryptPrivateKeyFile(keyFile, passwd string) (*PEM, error) {
 // in the encrypted-PEM format, it's not always possible to detect an incorrect
 // password. In these cases no error will be returned but the decrypted DER
 // bytes will be random noise.
-func DecryptPrivateKeyBytes(keyPEMBlock []byte, passwd string) (*PEM, error) {
+func DecryptPrivateKeyBytes(keyPEMBlock []byte, passwd string) (*PEMBlock, error) {
 	pemBlock, err := findPrivateKeyInPEMBlock(keyPEMBlock)
 	if err != nil {
 		return nil, err
@@ -107,7 +107,7 @@ func DecryptPrivateKeyBytes(keyPEMBlock []byte, passwd string) (*PEM, error) {
 	return NewPEM(newPem), nil
 }
 
-func findPrivateKeyInPEMBlock(keyPEMBlock []byte) (*PEM, error) {
+func findPrivateKeyInPEMBlock(keyPEMBlock []byte) (*PEMBlock, error) {
 	var skippedBlockTypes []string
 	var keyDERBlock *pem.Block
 	for {
