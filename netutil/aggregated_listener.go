@@ -72,7 +72,7 @@ type aggregatedListener struct {
 	unixLns []*net.UnixListener
 	lns     []net.Listener
 
-	closeOnece   sync.Once
+	closeOnce    sync.Once
 	closeAcceptC chan struct{}
 	closeC       chan struct{}
 }
@@ -217,7 +217,7 @@ func (l *aggregatedListener) Addr() net.Addr {
 
 func (l *aggregatedListener) Close() error {
 	var closeErr error
-	l.closeOnece.Do(func() {
+	l.closeOnce.Do(func() {
 		var errors []error
 		for _, ln := range l.lns {
 			if err := ln.Close(); err != nil {
