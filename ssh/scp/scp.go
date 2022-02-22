@@ -15,7 +15,6 @@ import (
 	"golang.org/x/crypto/ssh"
 
 	"github.com/zoumo/golib/fileinfo"
-	"github.com/zoumo/golib/log"
 )
 
 type stateFn func(string) (os.FileInfo, error)
@@ -28,7 +27,7 @@ type SCP struct {
 
 func New(client *ssh.Client, fs afero.Fs, logger logr.Logger) *SCP {
 	if logger == nil {
-		logger = log.NewNullLogger()
+		logger = logr.Discard()
 	}
 	return &SCP{
 		client: client,

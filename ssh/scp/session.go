@@ -14,7 +14,6 @@ import (
 	"golang.org/x/crypto/ssh"
 
 	"github.com/zoumo/golib/fileinfo"
-	"github.com/zoumo/golib/log"
 )
 
 type uploadFn func(ctx context.Context, fullpath string, info os.FileInfo, content io.Reader) error
@@ -30,7 +29,7 @@ const (
 
 func newSession(client *ssh.Client, mode sessionMode, readTimeout time.Duration, logger logr.Logger) (*session, error) {
 	if logger == nil {
-		logger = log.NewNullLogger()
+		logger = logr.Discard()
 	}
 	s, err := client.NewSession()
 	if err != nil {
