@@ -26,6 +26,10 @@ type DefaultInjectionMixin struct {
 	Workspace string
 }
 
+func NewDefaultInjectionMixin() *DefaultInjectionMixin {
+	return &DefaultInjectionMixin{}
+}
+
 func (m *DefaultInjectionMixin) InjectLogger(logger logr.Logger) {
 	m.Logger = logger
 }
