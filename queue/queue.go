@@ -22,7 +22,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/workqueue"
-	"k8s.io/klog"
 )
 
 const (
@@ -191,7 +190,6 @@ func (q *Queue) handleError(obj interface{}, err error) {
 	}
 	if q.maxErrRetries == ErrRetryForever ||
 		(q.maxErrRetries != ErrRetryNone && q.queue.NumRequeues(obj) < q.maxErrRetries) {
-		klog.Warningf("Error handling obj %v retry: %v, err: %v", obj, q.queue.NumRequeues(obj), err)
 		q.queue.AddRateLimited(obj)
 		return
 	}
