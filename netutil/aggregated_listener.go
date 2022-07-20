@@ -56,6 +56,23 @@ type AggregatedListener interface {
 	AcceptUnix() (*net.UnixConn, error)
 }
 
+// TCPListener represent a tcp listener
+type TCPListener interface {
+	net.Listener
+	// AcceptTCP accepts the next tcp incoming call and returns the new
+	// tcp connection.
+	AcceptTCP() (*net.TCPConn, error)
+}
+
+// UnixListener represent a unix listener
+type UnixListener interface {
+	net.Listener
+
+	// AcceptUnix accepts the next unix incoming call and returns the new
+	// unix connection.
+	AcceptUnix() (*net.UnixConn, error)
+}
+
 type acceptResult struct {
 	conn net.Conn
 	err  error
@@ -68,8 +85,8 @@ type aggregatedListener struct {
 	acceptTCPC  chan *acceptResult
 	acceptUnixC chan *acceptResult
 
-	tcpLns  []*net.TCPListener
-	unixLns []*net.UnixListener
+	tcpLns  []TCPListener
+	unixLns []UnixListener
 	lns     []net.Listener
 
 	closeOnce    sync.Once
@@ -99,9 +116,9 @@ func NewAggregatedListener(listeners ...net.Listener) (AggregatedListener, error
 
 	for i := range listeners {
 		switch ln := listeners[i].(type) {
-		case *net.TCPListener:
+		case TCPListener:
 			l.tcpLns = append(l.tcpLns, ln)
-		case *net.UnixListener:
+		case UnixListener:
 			l.unixLns = append(l.unixLns, ln)
 		default:
 			l.lns = append(l.lns, ln)
