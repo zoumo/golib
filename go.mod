@@ -15,9 +15,9 @@ require (
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/pflag v1.0.5
 	go.uber.org/zap v1.10.0
-	golang.org/x/crypto v0.0.0-20210616213533-5ff15b29337e
-	golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1
-	golang.org/x/text v0.3.6
+	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
+	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
+	golang.org/x/text v0.3.8
 	k8s.io/apimachinery v0.18.10
 	k8s.io/client-go v0.18.10
 	k8s.io/klog/v2 v2.10.0
