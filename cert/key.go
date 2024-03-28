@@ -1,11 +1,11 @@
 // Copyright 2023 jim.zoumo@gmail.com
-// 
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     http://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,7 +15,6 @@
 package cert
 
 import (
-	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -24,8 +23,11 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"io/ioutil"
-	"strings"
+	"os"
+)
+
+const (
+	privateKeySize = 2048
 )
 
 // NewRSAPrivateKey creates a new RSA private key
@@ -33,18 +35,27 @@ func NewRSAPrivateKey() (*rsa.PrivateKey, error) {
 	return rsa.GenerateKey(rand.Reader, privateKeySize)
 }
 
-// NewECDSAPrivateKey create a new ECDSA provate key by curve
-func NewECDSAPrivateKey(curve string) (*ecdsa.PrivateKey, error) {
+type EllipticCurve string
+
+const (
+	CurveP224 EllipticCurve = "P224"
+	CurveP256 EllipticCurve = "P256"
+	CurveP384 EllipticCurve = "P384"
+	CurveP521 EllipticCurve = "P521"
+)
+
+// NewECPrivateKey create a new ECDSA provate key by curve
+func NewECPrivateKey(curve EllipticCurve) (*ecdsa.PrivateKey, error) {
 	var priv *ecdsa.PrivateKey
 	var err error
 	switch curve {
-	case "P224":
+	case CurveP224:
 		priv, err = ecdsa.GenerateKey(elliptic.P224(), rand.Reader)
-	case "P256":
+	case CurveP256:
 		priv, err = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	case "P384":
+	case CurveP384:
 		priv, err = ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
-	case "P521":
+	case CurveP521:
 		priv, err = ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
 	default:
 		return nil, fmt.Errorf("unrecognized elliptic curve: %q", curve)
@@ -55,38 +66,15 @@ func NewECDSAPrivateKey(curve string) (*ecdsa.PrivateKey, error) {
 	return priv, nil
 }
 
-// ParsePrivateKey attempts to parse the given private key DER block. OpenSSL 0.9.8 generates
-// PKCS#1 private keys by default, while OpenSSL 1.0.0 generates PKCS#8 keys.
-// OpenSSL ecparam generates SEC1 EC private keys for ECDSA. We try all three.
-func ParsePrivateKey(der []byte) (crypto.Signer, error) {
-	if key, err := x509.ParsePKCS1PrivateKey(der); err == nil {
-		return key, nil
-	}
-	if key, err := x509.ParsePKCS8PrivateKey(der); err == nil {
-		switch key := key.(type) {
-		case *rsa.PrivateKey:
-			return key, nil
-		case *ecdsa.PrivateKey:
-			return key, nil
-		default:
-			return nil, errors.New("tls: found unknown private key type in PKCS#8 wrapping")
-		}
-	}
-	if key, err := x509.ParseECPrivateKey(der); err == nil {
-		return key, nil
-	}
-
-	return nil, errors.New("tls: failed to parse private key")
-}
-
 // DecryptPrivateKeyFile takes a password encrypted key file and the password
-//  used to encrypt it and returns a slice of decrypted DER encoded bytes.
+//
+//	used to encrypt it and returns a slice of decrypted DER encoded bytes.
 func DecryptPrivateKeyFile(keyFile, passwd string) (*PEMBlock, error) {
-	keyPEMBlock, err := ioutil.ReadFile(keyFile)
+	keyBytes, err := os.ReadFile(keyFile)
 	if err != nil {
 		return nil, err
 	}
-	return DecryptPrivateKeyBytes(keyPEMBlock, passwd)
+	return DecryptPrivateKeyBytes(keyBytes, passwd)
 }
 
 // DecryptPrivateKeyBytes takes a password encrypted PEM block and the password
@@ -118,28 +106,15 @@ func DecryptPrivateKeyBytes(keyPEMBlock []byte, passwd string) (*PEMBlock, error
 		Bytes: der,
 	}
 
-	return NewPEM(newPem), nil
+	return NewPEMBlock(newPem), nil
 }
 
 func findPrivateKeyInPEMBlock(keyPEMBlock []byte) (*PEMBlock, error) {
-	var skippedBlockTypes []string
-	var keyDERBlock *pem.Block
-	for {
-		keyDERBlock, keyPEMBlock = pem.Decode(keyPEMBlock)
-		if keyDERBlock == nil {
-			if len(skippedBlockTypes) == 0 {
-				return nil, errors.New("tls: failed to find any PEM data in key input")
-			}
-			if len(skippedBlockTypes) == 1 && skippedBlockTypes[0] == "CERTIFICATE" {
-				return nil, errors.New("tls: found a certificate rather than a key in the PEM for the private key")
-			}
-			return nil, fmt.Errorf("tls: failed to find PEM block with type ending in \"PRIVATE KEY\" in key input after skipping PEM blocks of the following types: %v", skippedBlockTypes)
+	blocks := DecodePEMs(keyPEMBlock)
+	for _, b := range blocks {
+		if filterPrivateKey(b.Block) {
+			return b, nil
 		}
-		if keyDERBlock.Type == "PRIVATE KEY" || strings.HasSuffix(keyDERBlock.Type, " PRIVATE KEY") {
-			break
-		}
-		skippedBlockTypes = append(skippedBlockTypes, keyDERBlock.Type)
 	}
-
-	return NewPEM(keyDERBlock), nil
+	return nil, errors.New("no private key found in pem blocks")
 }

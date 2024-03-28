@@ -16,6 +16,8 @@ package cert
 
 import (
 	"bytes"
+	"crypto"
+	"crypto/ed25519"
 	"crypto/rsa"
 	"encoding/pem"
 	"testing"
@@ -23,14 +25,14 @@ import (
 
 func createPEMBytes() []byte {
 	caKey, _ := NewRSAPrivateKey()
-	caCert, _ := NewSelfSignedCACert(Options{}, caKey)
-	myKey, _ := NewECDSAPrivateKey("P224")
-	myCert, _ := NewSignedCert(Options{}, myKey, caKey, caCert)
+	caCert, _ := NewSelfSignedCACert(Config{}, caKey)
+	myKey, _ := NewECPrivateKey("P224")
+	myCert, _ := NewSignedCert(Config{}, myKey, caKey, caCert)
 
-	caKeyPEM := NewPEMForRSAKey(caKey)
-	myKeyPEM := NewPEMForECDSAKey(myKey)
-	caCertPEM := NewPEMForCert(caCert)
-	myCertPEM := NewPEMForCert(myCert)
+	caKeyPEM := MarshalRSAPrivateKeyToPEM(caKey)
+	myKeyPEM, _ := MarshalECPrivateKeyToPEM(myKey)
+	caCertPEM := MarshalCertToPEM(caCert)
+	myCertPEM := MarshalCertToPEM(myCert)
 
 	return bytes.Join([][]byte{
 		caKeyPEM.EncodeToMemory(),
@@ -40,7 +42,7 @@ func createPEMBytes() []byte {
 	}, []byte{'\n'})
 }
 
-func Test_parsePEM(t *testing.T) {
+func Test_decodePEMs(t *testing.T) {
 	pemBytes := createPEMBytes()
 
 	tests := []struct {
@@ -51,25 +53,25 @@ func Test_parsePEM(t *testing.T) {
 	}{
 		{
 			"filter key",
-			privateKeyFilter,
+			filterPrivateKey,
 			false,
 			2,
 		},
 		{
 			"filter first key",
-			privateKeyFilter,
+			filterPrivateKey,
 			true,
 			1,
 		},
 		{
 			"filter cert",
-			certsFilter,
+			filterCert,
 			false,
 			2,
 		},
 		{
-			"filter cert",
-			certsFilter,
+			"filter first cert",
+			filterCert,
 			true,
 			1,
 		},
@@ -84,7 +86,7 @@ func Test_parsePEM(t *testing.T) {
 		{
 			"filter ec key",
 			func(block *pem.Block) bool {
-				return block.Type == ECDSAPrivateKeyPEMBlockType
+				return block.Type == ECPrivateKeyPEMBlockType
 			},
 			false,
 			1,
@@ -93,7 +95,7 @@ func Test_parsePEM(t *testing.T) {
 	for i := range tests {
 		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
-			if got := parsePEM(pemBytes, tt.first, tt.filter); len(got) != tt.want {
+			if got := decodePEMs(pemBytes, tt.first, tt.filter); len(got) != tt.want {
 				t.Errorf("parsePEM() = %v, want %v", len(got), tt.want)
 			}
 		})
@@ -123,5 +125,54 @@ func TestParseCertsPEM(t *testing.T) {
 	want := 2
 	if len(got) != want {
 		t.Errorf("ParseCertsPEM got = %v, want = %v", len(got), want)
+	}
+}
+
+func TestMarshalPrivateKeyToPEM(t *testing.T) {
+	tests := []struct {
+		name     string
+		key      crypto.Signer
+		wantType string
+		wantErr  bool
+	}{
+		{
+			name: "rsa",
+			key: func() crypto.Signer {
+				key, _ := NewRSAPrivateKey()
+				return key
+			}(),
+			wantType: RASPrivateKeyPEMBlockType,
+			wantErr:  false,
+		},
+		{
+			name: "ec",
+			key: func() crypto.Signer {
+				key, _ := NewECPrivateKey(CurveP224)
+				return key
+			}(),
+			wantType: ECPrivateKeyPEMBlockType,
+			wantErr:  false,
+		},
+		{
+			name:    "error",
+			key:     ed25519.PrivateKey{},
+			wantErr: true,
+		},
+	}
+	for i := range tests {
+		tt := tests[i]
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := MarshalPrivateKeyToPEM(tt.key)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("MarshalPrivateKeyToPEM() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !tt.wantErr {
+				if got.Type != tt.wantType {
+					t.Errorf("MarshalPrivateKeyToPEM() = %v, want %v", got.Type, tt.wantType)
+					return
+				}
+			}
+		})
 	}
 }

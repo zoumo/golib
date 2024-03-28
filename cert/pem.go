@@ -15,15 +15,17 @@
 package cert
 
 import (
+	"bytes"
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"io"
-	"io/ioutil"
-	"strings"
+	"os"
+	"sync"
 )
 
 const (
@@ -33,116 +35,149 @@ const (
 	CertificateRequestPEMBlockType = "CERTIFICATE REQUEST"
 	// RASPrivateKeyPEMBlockType is a possible value for pem.Block.Type.
 	RASPrivateKeyPEMBlockType = "RSA PRIVATE KEY"
-	// ECDSAPrivateKeyPEMBlockType is a possible value for pem.Block.Type.
-	ECDSAPrivateKeyPEMBlockType = "EC PRIVATE KEY"
+	// ECPrivateKeyPEMBlockType is a possible value for pem.Block.Type.
+	ECPrivateKeyPEMBlockType = "EC PRIVATE KEY"
+	// PrivateKeyBlockType is a possible value for pem.Block.Type.
+	PrivateKeyPEMBlockType = "PRIVATE KEY"
 )
 
 // PEMBlock contains the raw bytes and a block of pem
 type PEMBlock struct {
-	Block *pem.Block
-}
+	*pem.Block
 
-// Encode writes the PEM encoding of block to out.
-func (p *PEMBlock) Encode(out io.Writer) error {
-	return pem.Encode(out, p.Block)
+	onece  sync.Once
+	buffer bytes.Buffer
+	err    error
 }
 
 // EncodeToMemory returns the PEM encoding bytes of p.
+//
+// If b has invalid headers and cannot be encoded,
+// EncodeToMemory returns nil. If it is important to
+// report details about this error case, use Encode instead.
 func (p *PEMBlock) EncodeToMemory() []byte {
-	return pem.EncodeToMemory(p.Block)
+	p.writeToBuffer()
+	if p.err != nil {
+		return nil
+	}
+	return p.buffer.Bytes()
+}
+
+// WriteTo writes the PEM encoding of block to out.
+func (p *PEMBlock) WriteTo(out io.Writer) (int64, error) {
+	p.writeToBuffer()
+	if p.err != nil {
+		return 0, p.err
+	}
+	n, err := out.Write(p.buffer.Bytes())
+	return int64(n), err
 }
 
 // WriteFile writes the PEM encoding to a file
 func (p *PEMBlock) WriteFile(f string) error {
-	return ioutil.WriteFile(f, p.EncodeToMemory(), 0644)
+	p.writeToBuffer()
+	if p.err != nil {
+		return p.err
+	}
+	return os.WriteFile(f, p.buffer.Bytes(), 0o644)
 }
 
-// NewPEM creates a new PEM struct from pem.Block
-func NewPEM(b *pem.Block) *PEMBlock {
+func (p *PEMBlock) writeToBuffer() {
+	p.onece.Do(func() {
+		p.err = pem.Encode(&p.buffer, p.Block)
+	})
+}
+
+// NewPEMBlock creates a new PEM struct from pem.Block
+func NewPEMBlock(b *pem.Block) *PEMBlock {
 	return &PEMBlock{
 		Block: b,
 	}
 }
 
-// NewPEMForPrivateKey returns a pemBlock for crypto private key
-// It returns an error if the key is not *rsa.PrivateKey or *ecdsa.PrivateKey
-func NewPEMForPrivateKey(key crypto.Signer) (*PEMBlock, error) {
-	switch pkey := key.(type) {
-	case *rsa.PrivateKey:
-		return NewPEMForRSAKey(pkey), nil
-	case *ecdsa.PrivateKey:
-		return NewPEMForECDSAKey(pkey), nil
-	default:
-		return nil, errors.New("tls: found unknown private key type in PKCS#8 wrapping")
-	}
+// DecodePEMs decode input pem bytes to pem blocks.
+func DecodePEMs(pemBytes []byte) []*PEMBlock {
+	return decodePEMs(pemBytes, false, nil)
 }
 
-// NewPEMForRSAKey returns a pemBlock for ras private key
-func NewPEMForRSAKey(key *rsa.PrivateKey) *PEMBlock {
-	return NewPEM(&pem.Block{Type: RASPrivateKeyPEMBlockType, Bytes: x509.MarshalPKCS1PrivateKey(key)})
-}
-
-// NewPEMForECDSAKey returns a pemBlock for ecdsa private key
-func NewPEMForECDSAKey(key *ecdsa.PrivateKey) *PEMBlock {
-	bytes, _ := x509.MarshalECPrivateKey(key)
-	return NewPEM(&pem.Block{Type: ECDSAPrivateKeyPEMBlockType, Bytes: bytes})
-}
-
-// NewPEMForCert returns a pemBlock for x509 certificate
-func NewPEMForCert(crt *x509.Certificate) *PEMBlock {
-	if crt == nil {
-		return nil
-	}
-	return NewPEMForCertDER(crt.Raw)
-}
-
-// NewPEMForCertificate returns a pemBlock for x509 certificate
-func NewPEMForCertDER(derBytes []byte) *PEMBlock {
-	return NewPEM(&pem.Block{Type: CertificatePEMBlockType, Bytes: derBytes})
-}
-
-// NewPEMForCSR returns a pemBlock for certificate request
-func NewPEMForCSR(csr *x509.CertificateRequest) *PEMBlock {
-	if csr == nil {
-		return nil
-	}
-	return NewPEMForCSRDER(csr.Raw)
-}
-
-// NewPEMForCSRDER returns a pemBlock for certificate request
-func NewPEMForCSRDER(derBytes []byte) *PEMBlock {
-	return NewPEM(&pem.Block{Type: CertificateRequestPEMBlockType, Bytes: derBytes})
-}
-
-// ParsePEM decode input pem bytes to pem blocks.
-func ParsePEM(pemBytes []byte) []*PEMBlock {
-	return parsePEM(pemBytes, false, nil)
-}
-
-// ParsePEM find valid pem block in bytes and decode the first block.
-func ParseFirstPEMBlock(pemBytes []byte) *PEMBlock {
-	pems := parsePEM(pemBytes, true, nil)
+// DecodeFirstPEM find valid pem block in bytes and decode the first block.
+func DecodeFirstPEM(pemBytes []byte) *PEMBlock {
+	pems := decodePEMs(pemBytes, true, nil)
 	if len(pems) == 0 {
 		return nil
 	}
 	return pems[0]
 }
 
+// MarshalPrivateKeyToPEM converts the private key to PEM block.
+func MarshalPrivateKeyToPEM(key crypto.Signer) (*PEMBlock, error) {
+	switch pkey := key.(type) {
+	case *rsa.PrivateKey:
+		return MarshalRSAPrivateKeyToPEM(pkey), nil
+	case *ecdsa.PrivateKey:
+		return MarshalECPrivateKeyToPEM(pkey)
+	default:
+		return nil, errors.New("the key must be *rsa.PrivateKey or *ecdsa.PrivateKey")
+	}
+}
+
+// MarshalRSAPrivateKeyToPEM converts an RSA private key to PKCS #1, ASN.1 DER form.
+func MarshalRSAPrivateKeyToPEM(key *rsa.PrivateKey) *PEMBlock {
+	return NewPEMBlock(&pem.Block{
+		Type:  RASPrivateKeyPEMBlockType,
+		Bytes: x509.MarshalPKCS1PrivateKey(key),
+	})
+}
+
+// MarshalECPrivateKeyToPEM converts an EC private key to SEC 1, ASN.1 DER form.
+func MarshalECPrivateKeyToPEM(key *ecdsa.PrivateKey) (*PEMBlock, error) {
+	bytes, err := x509.MarshalECPrivateKey(key)
+	if err != nil {
+		return nil, err
+	}
+	return NewPEMBlock(&pem.Block{
+		Type:  ECPrivateKeyPEMBlockType,
+		Bytes: bytes,
+	}), nil
+}
+
+// MarshalCertToPEM returns a pemBlock for x509 certificate
+func MarshalCertToPEM(crt *x509.Certificate) *PEMBlock {
+	if crt == nil {
+		return nil
+	}
+	return NewPEMBlock(&pem.Block{
+		Type:  CertificatePEMBlockType,
+		Bytes: crt.Raw,
+	})
+}
+
+// MarshalCSRToPEM returns a pemBlock for certificate request
+func MarshalCSRToPEM(csr *x509.CertificateRequest) *PEMBlock {
+	if csr == nil {
+		return nil
+	}
+	return NewPEMBlock(&pem.Block{
+		Type:  CertificateRequestPEMBlockType,
+		Bytes: csr.Raw,
+	})
+}
+
 // ParsePrivateKeyPEM find and decode the first valid private key pem block, then
 // convert it to crypto.PrivateKey(maybe rsa.PrivateKey or ecdsa.PrivateKey)
 func ParsePrivateKeyPEM(pemBytes []byte) (crypto.Signer, error) {
-	pems := parsePEM(pemBytes, false, privateKeyFilter)
+	pems := decodePEMs(pemBytes, true, filterPrivateKey)
 	if len(pems) == 0 {
 		return nil, errors.New("data does not contain any valid RSA or ECDSA private key")
 	}
-	return ParsePrivateKey(pems[0].Block.Bytes)
+	return parsePrivateKey(pems[0].Block)
 }
 
 // ParseCertPEM decode first valid certificate pem blocks to x509 certificate
 func ParseCertPEM(pemBytes []byte) (*x509.Certificate, error) {
-	pems := parsePEM(pemBytes, true, certsFilter)
+	pems := decodePEMs(pemBytes, true, filterCert)
 	if len(pems) == 0 {
-		return nil, errors.New("data does not contain any valid RSA or ECDSA certificates")
+		return nil, errors.New("pem data does not contain any valid RSA or ECDSA certificates")
 	}
 	cert, err := x509.ParseCertificate(pems[0].Block.Bytes)
 	if err != nil {
@@ -153,9 +188,9 @@ func ParseCertPEM(pemBytes []byte) (*x509.Certificate, error) {
 
 // ParseCertsPEM decode all valid certificate pem blocks to x509 certificates
 func ParseCertsPEM(pemBytes []byte) ([]*x509.Certificate, error) {
-	pems := parsePEM(pemBytes, false, certsFilter)
+	pems := decodePEMs(pemBytes, false, filterCert)
 	if len(pems) == 0 {
-		return nil, errors.New("data does not contain any valid RSA or ECDSA certificates")
+		return nil, errors.New("pem data does not contain any valid RSA or ECDSA certificates")
 	}
 	certs := []*x509.Certificate{}
 	for _, pem := range pems {
@@ -168,17 +203,36 @@ func ParseCertsPEM(pemBytes []byte) ([]*x509.Certificate, error) {
 	return certs, nil
 }
 
-func privateKeyFilter(block *pem.Block) bool {
-	return block.Type == "PRIVATE KEY" || strings.HasSuffix(block.Type, " PRIVATE KEY")
+// parsePrivateKey attempts to parse the given private key pem.Block.
+// OpenSSL 0.9.8 generates PKCS#1 private keys by default, while OpenSSL 1.0.0
+// generates PKCS#8 keys. OpenSSL ecparam generates SEC1 EC private keys for ECDSA.
+// We try all three.
+func parsePrivateKey(block *pem.Block) (crypto.Signer, error) {
+	switch block.Type {
+	case RASPrivateKeyPEMBlockType:
+		// RSA Private Key in PKCS#1 format
+		return x509.ParsePKCS1PrivateKey(block.Bytes)
+	case ECPrivateKeyPEMBlockType:
+		// ECDSA Private Key in ASN.1 format
+		return x509.ParseECPrivateKey(block.Bytes)
+	case PrivateKeyPEMBlockType:
+		// RSA or ECDSA Private Key in unencrypted PKCS#8 format
+		key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+		if err != nil {
+			return nil, err
+		}
+		signer, ok := key.(crypto.Signer)
+		if !ok {
+			return nil, fmt.Errorf("parsed private key from PKCS#8 is not crypto.Signer")
+		}
+		return signer, nil
+	}
+	return nil, fmt.Errorf("unknown private key type")
 }
 
-func certsFilter(block *pem.Block) bool {
-	return block.Type == CertificatePEMBlockType
-}
-
-// parsePEM decode input pem bytes to pem blocks.
+// decodePEMs decode input pem bytes to pem blocks.
 // If filter is set and returns false, the block will be ignored
-func parsePEM(pemBytes []byte, first bool, filter func(block *pem.Block) bool) []*PEMBlock {
+func decodePEMs(pemBytes []byte, getOne bool, filter func(block *pem.Block) bool) []*PEMBlock {
 	pems := []*PEMBlock{}
 	for len(pemBytes) > 0 {
 		var block *pem.Block
@@ -189,12 +243,23 @@ func parsePEM(pemBytes []byte, first bool, filter func(block *pem.Block) bool) [
 		if filter != nil && !filter(block) {
 			continue
 		}
-		pems = append(pems, NewPEM(block))
+		pems = append(pems, NewPEMBlock(block))
 
-		if first {
+		if getOne {
 			break
 		}
 	}
-
 	return pems
+}
+
+func filterPrivateKey(block *pem.Block) bool {
+	switch block.Type {
+	case RASPrivateKeyPEMBlockType, ECPrivateKeyPEMBlockType, PrivateKeyPEMBlockType:
+		return true
+	}
+	return false
+}
+
+func filterCert(block *pem.Block) bool {
+	return block.Type == CertificatePEMBlockType
 }
