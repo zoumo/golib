@@ -30,7 +30,7 @@ func cleanup() {
 	Log = singleton
 }
 
-func TestSetLogger(t *testing.T) {
+func TestSetLogrLogger(t *testing.T) {
 	type args struct {
 		l logr.Logger
 	}
@@ -38,6 +38,12 @@ func TestSetLogger(t *testing.T) {
 		name string
 		args args
 	}{
+		{
+			"noop",
+			args{
+				l: logr.Discard(),
+			},
+		},
 		{
 			"klogr",
 			args{
@@ -64,7 +70,7 @@ func TestSetLogger(t *testing.T) {
 			Log.Info("before set logger")
 			logger1 := Log.WithName("name1").WithName("sub1").WithValues("with", "value")
 			logger2 := Log.WithName("name2").WithName("sub2").WithValues("with", "value")
-			SetLogger(tt.args.l)
+			SetLogrLogger(tt.args.l)
 			Log.Info("after set logger")
 			logger1.Info("test", "key", "value")
 			logger2.Info("test", "key", "value")

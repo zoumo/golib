@@ -18,14 +18,19 @@ import (
 	"github.com/go-logr/logr"
 )
 
-// SetLogger sets a concrete logging implementation for all deferred Loggers.
-func SetLogger(l logr.Logger) {
+// SetLogrLogger sets a concrete logging implementation for all deferred Loggers.
+// Accepts a logr.Logger (works with both v0.4.0 and v1.0.0+).
+func SetLogrLogger(l logr.Logger) {
+	singleton.Propagate(FromLogr(l))
+}
+
+func SetLogger(l Logger) {
 	singleton.Propagate(l)
 }
 
 var (
 	singleton = newPlaceHolderLogger()
-	// Log is the base logger. It delegates to another logr.Logger in
+	// Log is the base logger. It delegates to another Logger in
 	// place holder. You must call SetLogger to get any actual logging.
-	Log logr.Logger = singleton
+	Log Logger = singleton
 )

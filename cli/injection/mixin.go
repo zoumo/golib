@@ -15,14 +15,14 @@
 package injection
 
 import (
-	"github.com/go-logr/logr"
+	"github.com/zoumo/golib/log"
 )
 
 var _ RequiresLogger = &DefaultInjectionMixin{}
 var _ RequiresWorkspace = &DefaultInjectionMixin{}
 
 type DefaultInjectionMixin struct {
-	Logger    logr.Logger
+	Logger    log.Logger
 	Workspace string
 }
 
@@ -30,7 +30,7 @@ func NewDefaultInjectionMixin() *DefaultInjectionMixin {
 	return &DefaultInjectionMixin{}
 }
 
-func (m *DefaultInjectionMixin) InjectLogger(logger logr.Logger) {
+func (m *DefaultInjectionMixin) InjectLogger(logger log.Logger) {
 	m.Logger = logger
 }
 

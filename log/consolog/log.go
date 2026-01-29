@@ -24,9 +24,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-logr/logr"
 	"github.com/spf13/pflag"
 	"golang.org/x/term"
+
+	"github.com/zoumo/golib/log"
 )
 
 const (
@@ -57,7 +58,7 @@ func init() {
 	enableColor = term.IsTerminal(int(os.Stdout.Fd()))
 }
 
-func New() logr.Logger {
+func New() log.Logger {
 	return &logger{
 		level:       0,
 		enableColor: enableColor,
@@ -76,11 +77,11 @@ type logger struct {
 	level       int
 	enableColor bool
 	prefix      string
-	values      []interface{}
+	values      []any
 }
 
-func copySlice(in []interface{}) []interface{} {
-	out := make([]interface{}, len(in))
+func copySlice(in []any) []any {
+	out := make([]any, len(in))
 	copy(out, in)
 	return out
 }
@@ -109,13 +110,13 @@ func (l *logger) Enabled() bool {
 	return verbose >= l.level
 }
 
-func (l *logger) V(level int) logr.Logger {
+func (l *logger) V(level int) log.Logger {
 	new := l.clone()
 	new.level = level
 	return new
 }
 
-func (l *logger) WithName(name string) logr.Logger {
+func (l *logger) WithName(name string) log.Logger {
 	new := l.clone()
 	if len(l.prefix) > 0 {
 		new.prefix = l.prefix + "/"
@@ -124,34 +125,34 @@ func (l *logger) WithName(name string) logr.Logger {
 	return new
 }
 
-func (l *logger) WithValues(kvList ...interface{}) logr.Logger {
+func (l *logger) WithValues(kvList ...any) log.Logger {
 	new := l.clone()
 	new.values = append(new.values, kvList...)
 	return new
 }
 
-func (l *logger) Info(msg string, keysAndValues ...interface{}) {
+func (l *logger) Info(msg string, keysAndValues ...any) {
 	if !l.Enabled() {
 		return
 	}
 	trimmed := trimDuplicates(l.values, keysAndValues)
-	kvList := []interface{}{}
+	kvList := []any{}
 	for i := range trimmed {
 		kvList = append(kvList, trimmed[i]...)
 	}
 	l.print(infoLog, msg, kvList)
 }
 
-func (l *logger) Error(err error, msg string, keysAndValues ...interface{}) {
+func (l *logger) Error(err error, msg string, keysAndValues ...any) {
 	if !l.Enabled() {
 		return
 	}
 	trimmed := trimDuplicates(l.values, keysAndValues)
-	kvList := []interface{}{}
+	kvList := []any{}
 	for i := range trimmed {
 		kvList = append(kvList, trimmed[i]...)
 	}
-	var loggableErr interface{}
+	var loggableErr any
 	if err != nil {
 		loggableErr = err.Error()
 	}
@@ -159,7 +160,7 @@ func (l *logger) Error(err error, msg string, keysAndValues ...interface{}) {
 	l.print(errorLog, msg, kvList)
 }
 
-func (l *logger) print(level int, msg string, kvList []interface{}) {
+func (l *logger) print(level int, msg string, kvList []any) {
 	buf := &bytes.Buffer{}
 	l.printTime(level, buf)
 
@@ -187,7 +188,7 @@ func (l *logger) printTime(level int, buf io.Writer) {
 		reset = ""
 	}
 
-	buf.Write([]byte(fmt.Sprintf("%s==> [%s]%s", color, time.Now().Format(time.RFC3339), reset))) //nolint
+	fmt.Fprintf(buf, "%s==> [%s]%s", color, time.Now().Format(time.RFC3339), reset) //nolint
 }
 
 func (l *logger) printPrefix(buf io.Writer) {
@@ -208,7 +209,7 @@ func (l *logger) printMsg(buf io.Writer, msg string) {
 	buf.Write([]byte(strong + msg + reset)) //nolint
 }
 
-func (l *logger) printKV(buf io.Writer, kvList ...interface{}) {
+func (l *logger) printKV(buf io.Writer, kvList ...any) {
 	reset := resetColor
 	color := l.getColor("yellow")
 	if color == "" {
@@ -216,13 +217,13 @@ func (l *logger) printKV(buf io.Writer, kvList ...interface{}) {
 	}
 	keyMaxLen := 0
 	keys := make([]string, 0, len(kvList))
-	vals := make(map[string]interface{}, len(kvList))
+	vals := make(map[string]any, len(kvList))
 	for i := 0; i < len(kvList); i += 2 {
 		k, ok := kvList[i].(string)
 		if !ok {
 			panic(fmt.Sprintf("key is not a string: %s", pretty(kvList[i])))
 		}
-		var v interface{}
+		var v any
 		if i+1 < len(kvList) {
 			v = kvList[i+1]
 		}
@@ -238,7 +239,7 @@ func (l *logger) printKV(buf io.Writer, kvList ...interface{}) {
 		v := vals[k]
 		buf.Write([]byte("    "))
 		format := fmt.Sprintf("%%s%%-%ds%%s", keyMaxLen)
-		buf.Write([]byte(fmt.Sprintf(format, color, k, reset)))
+		fmt.Fprintf(buf, format, color, k, reset)
 		buf.Write([]byte(" = "))
 		buf.Write([]byte(pretty(v)))
 		buf.Write([]byte("\n"))
@@ -248,16 +249,16 @@ func (l *logger) printKV(buf io.Writer, kvList ...interface{}) {
 // trimDuplicates will deduplicates elements provided in multiple KV tuple
 // slices, whilst maintaining the distinction between where the items are
 // contained.
-func trimDuplicates(kvLists ...[]interface{}) [][]interface{} {
+func trimDuplicates(kvLists ...[]any) [][]any {
 	// maintain a map of all seen keys
-	seenKeys := map[interface{}]struct{}{}
+	seenKeys := map[any]struct{}{}
 	// build the same number of output slices as inputs
-	outs := make([][]interface{}, len(kvLists))
+	outs := make([][]any, len(kvLists))
 	// iterate over the input slices backwards, as 'later' kv specifications
 	// of the same key will take precedence over earlier ones
 	for i := len(kvLists) - 1; i >= 0; i-- {
 		// initialize this output slice
-		outs[i] = []interface{}{}
+		outs[i] = []any{}
 		// obtain a reference to the kvList we are processing
 		kvList := kvLists[i]
 
@@ -276,7 +277,7 @@ func trimDuplicates(kvLists ...[]interface{}) [][]interface{} {
 			// make a note that we've observed a new key
 			seenKeys[k] = struct{}{}
 			// attempt to obtain the value of the key
-			var v interface{}
+			var v any
 			// i2+1 should only ever be out of bounds if we handling the first
 			// iteration over a slice with an odd number of elements
 			if i2+1 < len(kvList) {
@@ -284,13 +285,13 @@ func trimDuplicates(kvLists ...[]interface{}) [][]interface{} {
 			}
 			// add this KV tuple to the *start* of the output list to maintain
 			// the original order as we are iterating over the slice backwards
-			outs[i] = append([]interface{}{k, v}, outs[i]...)
+			outs[i] = append([]any{k, v}, outs[i]...)
 		}
 	}
 	return outs
 }
 
-func pretty(value interface{}) string {
+func pretty(value any) string {
 	if err, ok := value.(error); ok {
 		if _, ok := value.(json.Marshaler); !ok {
 			value = err.Error()
@@ -299,6 +300,6 @@ func pretty(value interface{}) string {
 	buffer := &bytes.Buffer{}
 	encoder := json.NewEncoder(buffer)
 	encoder.SetEscapeHTML(false)
-	encoder.Encode(value)                            //nolint
-	return strings.TrimSpace(string(buffer.Bytes())) //nolint
+	encoder.Encode(value)                     //nolint
+	return strings.TrimSpace(buffer.String()) //nolint
 }

@@ -14,7 +14,11 @@
 
 package diff
 
-import "github.com/stretchr/testify/suite"
+import (
+	"fmt"
+
+	"github.com/stretchr/testify/suite"
+)
 
 type diffTestSuite struct {
 	suite.Suite
@@ -37,8 +41,8 @@ func (s *diffTestSuite) TestDiffUnified() {
 	}{
 		{
 			name: "equal",
-			old:  "Hello, World!",
-			new:  "Hello, World!",
+			old:  `Hello, World!`,
+			new:  `Hello, World!`,
 			want: ``,
 		},
 		{
@@ -50,7 +54,8 @@ func (s *diffTestSuite) TestDiffUnified() {
 	}
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			diff := s.impl.DiffUnified("old", tt.old, "new", tt.new)
+			diff := s.impl.DiffUnified("old", "new", tt.old, tt.new)
+			fmt.Println(diff)
 			s.Equal(tt.want, diff)
 		})
 	}

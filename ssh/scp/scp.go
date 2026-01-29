@@ -1,11 +1,11 @@
 // Copyright 2023 jim.zoumo@gmail.com
-// 
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     http://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -23,12 +23,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	"github.com/spf13/afero"
 	"golang.org/x/crypto/ssh"
 
 	"github.com/zoumo/golib/fileinfo"
+	"github.com/zoumo/golib/log"
 )
 
 type stateFn func(string) (os.FileInfo, error)
@@ -36,12 +36,12 @@ type stateFn func(string) (os.FileInfo, error)
 type SCP struct {
 	client *ssh.Client
 	fs     afero.Fs
-	logger logr.Logger
+	logger log.Logger
 }
 
-func New(client *ssh.Client, fs afero.Fs, logger logr.Logger) *SCP {
+func New(client *ssh.Client, fs afero.Fs, logger log.Logger) *SCP {
 	if logger == nil {
-		logger = logr.Discard()
+		logger = log.Discard()
 	}
 	return &SCP{
 		client: client,
@@ -119,7 +119,6 @@ func (s *SCP) Download(ctx context.Context, remote, local string) error {
 		}
 		return nil
 	})
-
 	if err != nil {
 		return err
 	}
@@ -200,7 +199,6 @@ func (s *SCP) Upload(ctx context.Context, local, remote string) error {
 		}
 		return nil
 	})
-
 	if err != nil {
 		return err
 	}
