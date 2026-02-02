@@ -1,11 +1,11 @@
 // Copyright 2023 jim.zoumo@gmail.com
-// 
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     http://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -23,11 +23,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/ssh"
 
 	"github.com/zoumo/golib/fileinfo"
+	"github.com/zoumo/golib/log"
 )
 
 type uploadFn func(ctx context.Context, fullpath string, info os.FileInfo, content io.Reader) error
@@ -41,9 +41,9 @@ const (
 	scpRead
 )
 
-func newSession(client *ssh.Client, mode sessionMode, readTimeout time.Duration, logger logr.Logger) (*session, error) {
+func newSession(client *ssh.Client, mode sessionMode, readTimeout time.Duration, logger log.Logger) (*session, error) {
 	if logger == nil {
-		logger = logr.Discard()
+		logger = log.Discard()
 	}
 	s, err := client.NewSession()
 	if err != nil {
@@ -65,7 +65,7 @@ type session struct {
 	readTimeout time.Duration
 	mode        sessionMode
 
-	logger logr.Logger
+	logger log.Logger
 }
 
 func (s *session) Close() error {
@@ -327,13 +327,13 @@ func (s *session) upload(info os.FileInfo, reader io.Reader) error {
 	return err
 }
 
-//scpTimestampCmd returns scp timestamp command for supplied info
+// scpTimestampCmd returns scp timestamp command for supplied info
 func (s *session) scpTimestampCmd(info os.FileInfo) string {
 	unixTimestamp := info.ModTime().Unix()
 	return fmt.Sprintf("T%v 0 %v 0\n", unixTimestamp, unixTimestamp)
 }
 
-//scpCreateCmd returns scp create command for supplied info
+// scpCreateCmd returns scp create command for supplied info
 func (s *session) scpCreateCmd(info os.FileInfo) string {
 	mode := info.Mode()
 	fileType := "C"
@@ -346,7 +346,7 @@ func (s *session) scpCreateCmd(info os.FileInfo) string {
 	return fmt.Sprintf("%v %d %s\n", fileMode, size, info.Name())
 }
 
-//adjustPath tracks current and previous relative path to adjust accordingly
+// adjustPath tracks current and previous relative path to adjust accordingly
 func adjustPath(prev, current string, enterDir func(info os.FileInfo) error, endDir func() error) error {
 	if prev == current {
 		return nil
@@ -368,7 +368,7 @@ func adjustPath(prev, current string, enterDir func(info os.FileInfo) error, end
 			}
 		}
 	}
-	var downElements = make([]string, 0)
+	downElements := make([]string, 0)
 	for i := len(prevElements) - 1; i >= 0; i-- {
 		prevElem := prevElements[i]
 		currentElem := ""

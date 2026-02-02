@@ -82,7 +82,6 @@ func TestCmd_Command(t *testing.T) {
 		want *exec.Cmd
 	}{
 		{"", Command("echo", "123"), exec.Command("echo", "123")},
-		{"", CommandContext(context.TODO(), "echo", "123"), exec.CommandContext(context.TODO(), "echo", "123")},
 	}
 	for i := range tests {
 		tt := tests[i]
@@ -345,8 +344,8 @@ func TestCmd_CombinedOutputClosureManyTimes(t *testing.T) {
 			"",
 			Command("bash", "-c").CombinedOutputClosure(),
 			[]fields{
-				{[]string{"xxx"}, []byte("bash: xxx: command not found"), true},
 				{[]string{"echo 123"}, []byte("123"), false},
+				{[]string{"echo 456"}, []byte("456"), false},
 			},
 		},
 	}

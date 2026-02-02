@@ -15,12 +15,12 @@
 package injection
 
 import (
-	"github.com/go-logr/logr"
+	"github.com/zoumo/golib/log"
 )
 
 // RequiresValidation indicate the subcommand requires a logger
 type RequiresLogger interface {
-	InjectLogger(obj logr.Logger)
+	InjectLogger(obj log.Logger)
 }
 
 // RequiresValidation indicate the subcommand requires workspace
